@@ -1,0 +1,90 @@
+# -----------------------------
+# .gitignore para proyecto Node.js
+# Proyecto: `rag-mongodb-system`
+# Generado: actualizado para excluir artefactos comunes
+# -----------------------------
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime files
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Build / output
+dist/
+build/
+out/
+
+# Temporary
+tmp/
+temp/
+.cache/
+
+# Environment variables
+.env
+.env.*
+
+# Database dumps / backups
+dump/
+backup/
+*.bson
+
+# Data files (si no quieres subir datos de ejemplo)
+data/*.json
+data/*.csv
+data/*.db
+data/*.sqlite
+
+# Uploaded or generated files
+uploads/
+storage/
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Thumbs.db:encryptable
+
+# Swap and temporary files
+*.swp
+*.swo
+*.tmp
+
+# Docker
+docker-compose.override.yml
+
+# JetBrains
+*.iml
+
+# Misc
+.eslintcache
+.prettiercache
+
+# Optional: ignore local test/example outputs
+test-output/
+
+# Keep package lockfiles tracked (no los ignores):
+# - package-lock.json
+# - yarn.lock
