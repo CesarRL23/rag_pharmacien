@@ -7,6 +7,7 @@ require('dotenv').config();
 const { connectDB } = require('./src/config/db');
 const searchRoutes = require('./src/routes/search');
 const ragRoutes = require('./src/routes/rag');
+const embeddingService = require('./src/services/embeddingService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,6 +73,18 @@ const startServer = async () => {
   try {
     // Conectar a MongoDB
     await connectDB();
+
+    // Inicializar modelos de embeddings (especialmente CLIP) al inicio
+    try {
+      console.log('🔄 Inicializando servicios de embeddings (CLIP/text) en background...');
+      // inicializar modelo de texto ligero y CLIP (imagen + texto cuando esté disponible)
+      await embeddingService.initialize();
+      await embeddingService.initializeCLIP();
+      console.log('✅ Servicios de embeddings inicializados');
+    } catch (e) {
+      console.warn('⚠️ No se pudo inicializar completamente embeddingService en startup:', e.message);
+      console.warn('   Se intentará inicializar bajo demanda en las primeras peticiones.');
+    }
 
     // Iniciar servidor HTTP
     app.listen(PORT, () => {

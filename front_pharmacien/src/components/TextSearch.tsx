@@ -13,10 +13,12 @@ const TextSearch: React.FC = () => {
     setLoading(true)
     try {
       const data = await searchText(query)
+      console.log('📥 Respuesta del backend:', data)
       // assume backend returns { success, results }
       setResults(data.results || [])
     } catch (err: any) {
       setError(err.message || 'Error')
+      console.error('❌ Error en búsqueda:', err)
     } finally {
       setLoading(false)
     }

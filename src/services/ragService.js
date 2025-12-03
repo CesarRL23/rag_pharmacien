@@ -22,7 +22,7 @@ class RAGService {
     try {
       const startTime = Date.now();
       const timings = {};
-
+   
       // ETAPA 1: Generar embedding y buscar contexto relevante
       console.log('🔍 Paso 1: Buscando contexto relevante...');
       const searchStart = Date.now();

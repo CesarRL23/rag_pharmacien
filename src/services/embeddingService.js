@@ -5,6 +5,7 @@ class EmbeddingService {
   constructor() {
     this.textPipeline = null;
     this.imageFeaturePipeline = null;
+    this.clipTextPipeline = null;
     this.initialized = false;
     this.clipInitialized = false;
     this.textModel = 'Xenova/all-MiniLM-L6-v2';
@@ -34,6 +35,15 @@ class EmbeddingService {
         'image-feature-extraction',
         this.imageModel
       );
+      // Intentar crear también un pipeline de texto usando el mismo modelo CLIP
+      try {
+        this.clipTextPipeline = await pipeline('feature-extraction', this.imageModel);
+        console.log('✅ Pipeline de texto CLIP inicializado');
+      } catch (e) {
+        // No crítico — puede fallar en algunos entornos
+        console.warn('⚠️ No se pudo inicializar pipeline de texto CLIP:', e.message);
+        this.clipTextPipeline = null;
+      }
       this.clipInitialized = true;
       console.log('✅ Modelo CLIP inicializado');
     } catch (error) {
@@ -143,14 +153,52 @@ class EmbeddingService {
     }
   }
 
+  /** Genera embedding de texto usando el encoder de texto del mismo modelo CLIP (si está disponible) */
+  async generateClipTextEmbedding(text) {
+    await this.initializeCLIP();
+
+    if (!this.clipTextPipeline) {
+      throw new Error('Pipeline de texto CLIP no disponible en este entorno');
+    }
+
+    const startTime = Date.now();
+    const output = await this.clipTextPipeline(text, { pooling: 'mean', normalize: true });
+    const embedding = Array.from(output.data || output);
+    const endTime = Date.now();
+
+    return {
+      embedding,
+      dimensiones: embedding.length,
+      modelo: this.imageModel + '::text-encoder',
+      tiempo_ms: endTime - startTime,
+      fuente: 'CLIP-TEXT'
+    };
+  }
+
   /** Calcula similitud coseno entre dos vectores */
-  cosineSimilarity(vecA, vecB) {
-    if (vecA.length !== vecB.length) {
-      throw new Error(`Dimensiones no coinciden: ${vecA.length} vs ${vecB.length}`);
+  /**
+   * Calcula similitud coseno entre dos vectores.
+   * Si `options.allowTruncate` es true, se truncará al menor tamaño común
+   * en lugar de lanzar error cuando las dimensiones no coinciden.
+   */
+  cosineSimilarity(vecA, vecB, options = {}) {
+    const allowTruncate = options.allowTruncate || false;
+
+    let lenA = vecA.length;
+    let lenB = vecB.length;
+
+    if (lenA !== lenB) {
+      if (!allowTruncate) {
+        throw new Error(`Dimensiones no coinciden: ${lenA} vs ${lenB}`);
+      }
+      const minLen = Math.min(lenA, lenB);
+      lenA = lenB = minLen;
+      vecA = vecA.slice(0, minLen);
+      vecB = vecB.slice(0, minLen);
     }
 
     let dot = 0, normA = 0, normB = 0;
-    for (let i = 0; i < vecA.length; i++) {
+    for (let i = 0; i < lenA; i++) {
       dot += vecA[i] * vecB[i];
       normA += vecA[i] ** 2;
       normB += vecB[i] ** 2;
