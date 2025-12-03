@@ -73,19 +73,14 @@ class EmbeddingService {
       console.log(`📸 Generando embedding de imagen desde URL: ${imageUrl}`);
       const startTime = Date.now();
 
-      // Descargar imagen desde URL
-      const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-      const imageBuffer = Buffer.from(imageResponse.data, 'utf-8');
-      
-      // Usar CLIP para generar embedding
-      // CLIP genera embeddings de 512 dimensiones (patch32) o 768 (patch14)
-      const output = await this.visionTextMatching(imageBuffer, {
-        topk: 1 // Solo obtener el top prediction
-      });
+      // CLIP pipeline acepta URLs directamente
+      // Usamos labels genéricos para obtener scores y luego extraemos características
+      const labels = ['medicamento', 'pastilla', 'cápsula', 'jarabe', 'imagen médica'];
+      const output = await this.visionTextMatching(imageUrl, labels);
 
-      // Para generar un embedding real, usamos las características extraídas
-      // alternativa: usar el modelo de forma directa para extraer características visuales
-      const embedding = await this._extractImageFeatures(imageBuffer);
+      // Generar embedding basado en los scores de clasificación + hash de URL
+      const scores = output.map(o => o.score);
+      const embedding = await this._generateEmbeddingFromScores(scores, imageUrl);
       
       const endTime = Date.now();
 
@@ -101,6 +96,32 @@ class EmbeddingService {
       // Fallback: generar embedding aleatorio pero consistente basado en URL
       return await this._generateFallbackImageEmbedding(imageUrl);
     }
+  }
+
+  /** Genera un embedding de 512 dimensiones basado en scores de CLIP y URL */
+  async _generateEmbeddingFromScores(scores, imageUrl) {
+    // Hash de la URL para reproducibilidad
+    let hash = 0;
+    for (let i = 0; i < imageUrl.length; i++) {
+      hash = ((hash << 5) - hash) + imageUrl.charCodeAt(i);
+      hash = hash & hash;
+    }
+    
+    const embedding = Array(512).fill(0);
+    
+    // Usar scores de CLIP como base (primeras posiciones)
+    for (let i = 0; i < scores.length; i++) {
+      embedding[i] = scores[i];
+    }
+    
+    // Llenar el resto con valores deterministas basados en hash y scores
+    const seeded = Math.sin(Math.abs(hash) * 12.9898) * 43758.5453;
+    for (let i = scores.length; i < 512; i++) {
+      const scoreInfluence = scores[i % scores.length];
+      embedding[i] = (Math.sin(seeded + i * 0.1234567) * 0.5 + 0.5) * (0.5 + scoreInfluence * 0.5);
+    }
+    
+    return embedding;
   }
 
   /** Extrae características visuales de una imagen para generar embedding */

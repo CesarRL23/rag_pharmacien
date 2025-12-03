@@ -11,6 +11,25 @@ class Embedding {
     return db.collection(this.collectionName);
   }
 
+  static getValidationSchema() {
+    return {
+      $jsonSchema: {
+        bsonType: 'object',
+        required: ['tipo', 'embedding', 'referenceId', 'referenceCollection'],
+        properties: {
+          tipo: { bsonType: 'string', description: 'Tipo de embedding (text/image) - requerido' },
+          embedding: { bsonType: 'array', description: 'Vector de embedding - requerido' },
+          referenceId: { bsonType: 'objectId', description: 'ID del documento referenciado - requerido' },
+          referenceCollection: { bsonType: 'string', description: 'Colección referenciada - requerido' },
+          modelo: { bsonType: 'string', description: 'Modelo usado para generar el embedding' },
+          fecha: { bsonType: 'date', description: 'Fecha de creación' },
+          created_at: { bsonType: 'date' },
+          updated_at: { bsonType: 'date' }
+        }
+      }
+    };
+  }
+
   async create(data) {
     const collection = this.getCollection();
     const doc = {
@@ -62,4 +81,6 @@ class Embedding {
   }
 }
 
-module.exports = new Embedding();
+const embeddingInstance = new Embedding();
+embeddingInstance.getValidationSchema = Embedding.getValidationSchema;
+module.exports = embeddingInstance;

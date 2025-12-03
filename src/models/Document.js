@@ -77,4 +77,6 @@ class Document {
   }
 }
 
-module.exports = new Document();
+const documentInstance = new Document();
+documentInstance.getValidationSchema = Document.getValidationSchema;
+module.exports = documentInstance;

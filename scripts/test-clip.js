@@ -32,11 +32,11 @@ async function testCLIP() {
     
     const testImages = [
       {
-        url: 'https://via.placeholder.com/150?text=Medicamento+1',
+        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/200px-PNG_transparency_demonstration_1.png',
         descripcion: 'Imagen de prueba 1'
       },
       {
-        url: 'https://via.placeholder.com/150?text=Medicamento+2',
+        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/JPEG_example_flower.jpg/200px-JPEG_example_flower.jpg',
         descripcion: 'Imagen de prueba 2'
       }
     ];
@@ -61,21 +61,21 @@ async function testCLIP() {
 
     // Test 4: Calcular similitud entre embeddings de imagen
     console.log('\n\n📌 Test 4: Calcular similitud coseno entre embeddings de imagen');
-    let similarity = null;
+    let similarityScore = null;
     if (imageResults.length >= 2) {
-      similarity = embeddingService.cosineSimilarity(
+      similarityScore = embeddingService.cosineSimilarity(
         imageResults[0].embedding,
         imageResults[1].embedding
       );
-      console.log(`✅ Similitud entre imagen 1 y 2: ${similarity.toFixed(4)}`);
+      console.log(`✅ Similitud entre imagen 1 y 2: ${similarityScore.toFixed(4)}`);
     }
 
     // Test 5: Generar batch de embeddings de imagen
     console.log('\n📌 Test 5: Generar batch de embeddings de imagen');
     const batchUrls = [
-      'https://via.placeholder.com/150?text=Batch+1',
-      'https://via.placeholder.com/150?text=Batch+2',
-      'https://via.placeholder.com/150?text=Batch+3'
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Good_Food_Display_-_NCI_Visuals_Online.jpg/200px-Good_Food_Display_-_NCI_Visuals_Online.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/200px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/200px-Camponotus_flavomarginatus_ant.jpg'
     ];
 
     const batchStart = Date.now();
@@ -112,7 +112,7 @@ async function testCLIP() {
     console.log(`   ✅ Embeddings de texto: ${textResult.dimensiones}D`);
     console.log(`   ✅ Embeddings de imagen: ${imageResults[0].dimensiones}D`);
     console.log(`   ✅ Imágenes procesadas: ${imageResults.length}`);
-    console.log(`   ✅ Similitud calculada: ${similarity ? similarity.toFixed(4) : 'N/A'}`);
+    console.log(`   ✅ Similitud calculada: ${similarityScore ? similarityScore.toFixed(4) : 'N/A'}`);
     console.log('');
 
     process.exit(0);

@@ -61,11 +61,19 @@ async function createIndexes() {
     const docsCollection = db.collection('documents');
 
     // Índice de texto completo
-    await docsCollection.createIndex(
-      { titulo: 'text', contenido: 'text' },
-      { name: 'text_search_index' }
-    );
-    console.log('✅ Índice de texto completo creado');
+    try {
+      await docsCollection.createIndex(
+        { titulo: 'text', contenido: 'text' },
+        { name: 'text_search_index' }
+      );
+      console.log('✅ Índice de texto completo creado');
+    } catch (error) {
+      if (error.code === 85 || error.code === 86) {
+        console.log('ℹ️  Índice de texto ya existe (omitiendo)');
+      } else {
+        throw error;
+      }
+    }
 
     // Índice compuesto fecha-idioma
     await docsCollection.createIndex(

@@ -25,4 +25,13 @@ const getDB = () => {
   return db;
 };
 
-module.exports = { connectDB, getDB };
+const closeDB = async () => {
+  if (client) {
+    await client.close();
+    client = null;
+    db = null;
+    console.log('✅ Conexión a MongoDB cerrada');
+  }
+};
+
+module.exports = { connectDB, getDB, closeDB };

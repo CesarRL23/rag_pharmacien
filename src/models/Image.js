@@ -103,4 +103,6 @@ class Image {
   }
 }
 
-module.exports = new Image();
+const imageInstance = new Image();
+imageInstance.getValidationSchema = Image.getValidationSchema;
+module.exports = imageInstance;
