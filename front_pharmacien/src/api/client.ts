@@ -11,10 +11,11 @@ export async function searchText(query: string) {
 }
 
 export async function searchImages(query: string) {
+  // Enviar tipo explícito text-to-image y un límite por defecto
   const res = await fetch(`${API_BASE}/search/multimodal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query })
+    body: JSON.stringify({ query, tipo: 'text-to-image', limit: 5 })
   });
   if (!res.ok) throw new Error('Error en request image search');
   return res.json();

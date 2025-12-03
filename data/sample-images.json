@@ -1,0 +1,42 @@
+[
+  {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/JPEG_example_flower.jpg/200px-JPEG_example_flower.jpg",
+    "titulo": "Pastilla Roja",
+    "descripcion": "Pastilla para la presión arterial",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab X" },
+    "fecha": "2025-01-01T00:00:00.000Z"
+  },
+  {
+    "url": "https://imagenes.heraldo.es/files/image_990_556/uploads/imagenes/2014/01/20/_antibioticos_5e62a9b6.jpg",
+    "titulo": "Pastilla Blanca",
+    "descripcion": "Antibiótico común",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab Y" },
+    "fecha": "2025-01-02T00:00:00.000Z"
+  },
+  {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/JPEG_example_flower.jpg/200px-JPEG_example_flower.jpg",
+    "titulo": "Cápsula Verde",
+    "descripcion": "Suplemento vitamínico",
+    "tipo": "suplemento",
+    "metadata": { "laboratorio": "Lab Z" },
+    "fecha": "2025-01-03T00:00:00.000Z"
+  },
+  {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Good_Food_Display_-_NCI_Visuals_Online.jpg/200px-Good_Food_Display_-_NCI_Visuals_Online.jpg",
+    "titulo": "Jarabe Azul",
+    "descripcion": "Jarabe para la tos",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab W" },
+    "fecha": "2025-01-04T00:00:00.000Z"
+  },
+  {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/200px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg",
+    "titulo": "Comprimido Amarillo",
+    "descripcion": "Analgésico general",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab V" },
+    "fecha": "2025-01-05T00:00:00.000Z"
+  }
+]

@@ -4,11 +4,11 @@ const axios = require('axios');
 class EmbeddingService {
   constructor() {
     this.textPipeline = null;
-    this.visionTextMatching = null;
+    this.imageFeaturePipeline = null;
     this.initialized = false;
-    this.textModel = 'Xenova/all-MiniLM-L6-v2';
-    this.imageModel = 'Xenova/clip-vit-base-patch32'; // Modelo CLIP real
     this.clipInitialized = false;
+    this.textModel = 'Xenova/all-MiniLM-L6-v2';
+    this.imageModel = 'Xenova/clip-vit-base-patch32';
   }
 
   async initialize() {
@@ -30,12 +30,15 @@ class EmbeddingService {
 
     try {
       console.log('🔄 Inicializando modelo CLIP para imágenes...');
-      this.visionTextMatching = await pipeline('zero-shot-image-classification', this.imageModel);
+      this.imageFeaturePipeline = await pipeline(
+        'image-feature-extraction',
+        this.imageModel
+      );
       this.clipInitialized = true;
       console.log('✅ Modelo CLIP inicializado');
     } catch (error) {
-      console.warn('⚠️ Error inicializando CLIP (usando fallback):', error.message);
-      this.clipInitialized = false;
+      console.error('❌ Error inicializando CLIP:', error.message);
+      throw error;
     }
   }
 
@@ -44,7 +47,10 @@ class EmbeddingService {
     if (!this.initialized) await this.initialize();
 
     const startTime = Date.now();
-    const output = await this.textPipeline(text, { pooling: 'mean', normalize: true });
+    const output = await this.textPipeline(text, { 
+      pooling: 'mean', 
+      normalize: true 
+    });
     const embedding = Array.from(output.data);
     const endTime = Date.now();
 
@@ -65,121 +71,83 @@ class EmbeddingService {
     return embeddings;
   }
 
-  /** Genera embedding de imagen usando CLIP */
-  async generateImageEmbedding(imageUrl) {
+  /** Genera embedding REAL de imagen usando CLIP */
+  async generateImageEmbedding(imageInput) {
     await this.initializeCLIP();
-    
+
     try {
-      console.log(`📸 Generando embedding de imagen desde URL: ${imageUrl}`);
+      console.log(`📸 Generando embedding de imagen...`);
       const startTime = Date.now();
 
-      // CLIP pipeline acepta URLs directamente
-      // Usamos labels genéricos para obtener scores y luego extraemos características
-      const labels = ['medicamento', 'pastilla', 'cápsula', 'jarabe', 'imagen médica'];
-      const output = await this.visionTextMatching(imageUrl, labels);
-
-      // Generar embedding basado en los scores de clasificación + hash de URL
-      const scores = output.map(o => o.score);
-      const embedding = await this._generateEmbeddingFromScores(scores, imageUrl);
+      // CLIP puede procesar directamente:
+      // 1. URLs (http/https)
+      // 2. Rutas de archivo locales
+      // 3. Buffers de imagen
       
+      let inputForCLIP = imageInput;
+
+      // Si es base64, convertir a Buffer
+      if (typeof imageInput === 'string' && !imageInput.startsWith('http')) {
+        console.log(`   📄 Convirtiendo base64 a Buffer...`);
+        
+        // Extraer datos base64 si tiene prefijo data:image
+        let base64Data = imageInput;
+        if (imageInput.startsWith('data:')) {
+          base64Data = imageInput.split(',')[1];
+        }
+        
+        inputForCLIP = Buffer.from(base64Data, 'base64');
+        console.log(`   ✓ Buffer creado: ${inputForCLIP.length} bytes`);
+      } else if (imageInput.startsWith('http')) {
+        console.log(`   🌐 Procesando desde URL directamente...`);
+      }
+
+      // Generar embedding con CLIP
+      console.log(`   🧠 Ejecutando modelo CLIP...`);
+      const output = await this.imageFeaturePipeline(inputForCLIP);
+
+      // Extraer embedding del output
+      let embedding;
+      if (output && output.data) {
+        embedding = Array.from(output.data);
+      } else if (Array.isArray(output) && output[0]?.data) {
+        embedding = Array.from(output[0].data);
+      } else if (Array.isArray(output)) {
+        embedding = output;
+      } else {
+        throw new Error('Formato de salida de CLIP no reconocido');
+      }
+
+      // Validar que el embedding sea real (no todos ceros)
+      const isValid = embedding.some(val => Math.abs(val) > 0.01);
+      if (!isValid) {
+        throw new Error('Embedding inválido: todos los valores son cercanos a cero');
+      }
+
       const endTime = Date.now();
+
+      console.log(`   ✅ Embedding generado: ${embedding.length} dims en ${endTime - startTime}ms`);
+      console.log(`   📊 Muestra: [${embedding.slice(0, 3).map(v => v.toFixed(4)).join(', ')}...]`);
 
       return {
         embedding,
         dimensiones: embedding.length,
         modelo: this.imageModel,
         tiempo_ms: endTime - startTime,
-        fuente: 'CLIP'
+        fuente: 'CLIP-REAL'
       };
+
     } catch (error) {
-      console.error('❌ Error generando embedding de imagen:', error.message);
-      // Fallback: generar embedding aleatorio pero consistente basado en URL
-      return await this._generateFallbackImageEmbedding(imageUrl);
+      console.error(`   ❌ Error generando embedding de imagen: ${error.message}`);
+      throw error;
     }
-  }
-
-  /** Genera un embedding de 512 dimensiones basado en scores de CLIP y URL */
-  async _generateEmbeddingFromScores(scores, imageUrl) {
-    // Hash de la URL para reproducibilidad
-    let hash = 0;
-    for (let i = 0; i < imageUrl.length; i++) {
-      hash = ((hash << 5) - hash) + imageUrl.charCodeAt(i);
-      hash = hash & hash;
-    }
-    
-    const embedding = Array(512).fill(0);
-    
-    // Usar scores de CLIP como base (primeras posiciones)
-    for (let i = 0; i < scores.length; i++) {
-      embedding[i] = scores[i];
-    }
-    
-    // Llenar el resto con valores deterministas basados en hash y scores
-    const seeded = Math.sin(Math.abs(hash) * 12.9898) * 43758.5453;
-    for (let i = scores.length; i < 512; i++) {
-      const scoreInfluence = scores[i % scores.length];
-      embedding[i] = (Math.sin(seeded + i * 0.1234567) * 0.5 + 0.5) * (0.5 + scoreInfluence * 0.5);
-    }
-    
-    return embedding;
-  }
-
-  /** Extrae características visuales de una imagen para generar embedding */
-  async _extractImageFeatures(imageBuffer) {
-    try {
-      // Implementar extracción de características visuales
-      // Por ahora, usar un enfoque simple pero efectivo
-      const features = Array(512).fill(0).map(() => Math.random());
-      
-      // Hash basado en contenido para reproducibilidad
-      let hash = 0;
-      for (let i = 0; i < imageBuffer.length; i++) {
-        hash = ((hash << 5) - hash) + imageBuffer[i];
-        hash = hash & hash; // Convert to 32bit integer
-      }
-      
-      // Usar seed del hash para generar características reproducibles
-      const seeded = Math.sin(Math.abs(hash) * 12.9898) * 43758.5453;
-      for (let i = 0; i < features.length; i++) {
-        features[i] = Math.sin(seeded + i * 0.1234567) * 0.5 + 0.5;
-      }
-      
-      return features;
-    } catch (error) {
-      console.warn('⚠️ Error extrayendo características:', error.message);
-      return Array(512).fill(0).map(() => Math.random());
-    }
-  }
-
-  /** Fallback: generar embedding aleatorio pero reproducible basado en URL */
-  async _generateFallbackImageEmbedding(imageUrl) {
-    console.warn(`⚠️ Usando fallback para imagen: ${imageUrl}`);
-    
-    // Generar seed hash basado en la URL para reproducibilidad
-    let hash = 0;
-    for (let i = 0; i < imageUrl.length; i++) {
-      hash = ((hash << 5) - hash) + imageUrl.charCodeAt(i);
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    
-    const seeded = Math.sin(Math.abs(hash) * 12.9898) * 43758.5453;
-    const embedding = Array(512).fill(0).map((_, i) => 
-      Math.sin(seeded + i * 0.1234567) * 0.5 + 0.5
-    );
-    
-    return {
-      embedding,
-      dimensiones: 512,
-      modelo: this.imageModel,
-      tiempo_ms: 0,
-      fuente: 'FALLBACK (basado en URL)',
-      warning: 'No se pudo procesar imagen real - usando embedding determinista'
-    };
   }
 
   /** Calcula similitud coseno entre dos vectores */
   cosineSimilarity(vecA, vecB) {
-    if (vecA.length !== vecB.length) throw new Error('Dimensiones no coinciden');
+    if (vecA.length !== vecB.length) {
+      throw new Error(`Dimensiones no coinciden: ${vecA.length} vs ${vecB.length}`);
+    }
 
     let dot = 0, normA = 0, normB = 0;
     for (let i = 0; i < vecA.length; i++) {

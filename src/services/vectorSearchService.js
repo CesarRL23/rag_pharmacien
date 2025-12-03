@@ -57,7 +57,6 @@ class VectorSearchService {
     if (!query || typeof query !== 'string') throw new Error('query debe ser string');
 
     const limit = options.limit || this.defaultTopK;
-    // candidateK: cuantos candidatos sacar del knn para luego rankear localmente
     const candidateK = options.candidateLimit || Math.max(limit * 10, 50);
     const filters = options.filters || {};
     const vectorIndexName = options.vectorIndexName || this.defaultTextIndex;
@@ -80,7 +79,6 @@ class VectorSearchService {
     const match = this._buildMatch(filters);
     if (Object.keys(match).length > 0) pipeline.push({ $match: match });
 
-    // Proyectamos EL embedding (necesario para cálculo local), y campos útiles
     pipeline.push(
       {
         $project: {
@@ -97,12 +95,10 @@ class VectorSearchService {
 
     const candidates = await this.embeddingsColl.aggregate(pipeline).toArray();
 
-    // Si no hay candidatos regresamos vacío
     if (!candidates || candidates.length === 0) {
       return { query, success: true, results: [], timings: { embed_ms: tiempo_ms } };
     }
 
-    // Calcular similitud coseno localmente y ordenar
     const scored = candidates.map(c => {
       let sim = 0;
       try {
@@ -113,13 +109,9 @@ class VectorSearchService {
       return { ...c, score: sim };
     });
 
-    // Orden descendente por score
     scored.sort((a, b) => b.score - a.score);
-
-    // Tomar top-K finales
     const top = scored.slice(0, limit);
 
-    // Resolver referencias (Document/Image) — puedes optimizar con $lookup si quieres
     const results = [];
     for (const c of top) {
       const referenced = await this._resolveReference(c.referenceCollection, c.referenceId);
@@ -239,21 +231,89 @@ class VectorSearchService {
     return { query, success: true, results, timings: { embed_ms: tiempo_ms } };
   }
 
-  // ---------- multimodalSearch ----------
+  // ---------- multimodalSearch - CORREGIDO ----------
   async multimodalSearch(queryOrImageUrl, options = {}) {
     await this.initialize();
     const tipo = (options.tipo || 'text-to-image');
     const limit = options.limit || this.defaultTopK;
-    const vectorIndexName = options.vectorIndexName || (tipo.startsWith('image') ? this.defaultImageIndex : this.defaultTextIndex);
+    
+    // 🔥 CORRECCIÓN CRÍTICA: Definir filtros según el tipo de búsqueda
+    let filters = options.filters || {};
+    let vectorIndexName = options.vectorIndexName;
 
-    if (tipo === 'text-to-image' || tipo === 'text-to-text') {
+    console.log(`🔍 Búsqueda multimodal tipo: ${tipo}`);
+
+    if (tipo === 'text-to-image') {
+      // ✅ Buscar IMÁGENES usando texto
+      console.log('   📝 Generando embedding de TEXTO para buscar IMÁGENES...');
+      
+      filters = {
+        ...filters,
+        referenceCollection: 'images', // 🔥 FILTRAR SOLO IMÁGENES
+        tipo: 'image'
+      };
+      
+      vectorIndexName = vectorIndexName || this.defaultImageIndex;
+      
       const { embedding: emb, tiempo_ms } = await embeddingService.generateTextEmbedding(queryOrImageUrl);
-      return this.searchByEmbedding(emb, { limit, vectorIndexName, filters: options.filters });
+      
+      console.log(`   ✅ Embedding de texto generado (${emb.length} dims)`);
+      console.log(`   🔎 Buscando en colección: images`);
+      
+      return this.searchByEmbedding(emb, { 
+        limit, 
+        vectorIndexName, 
+        filters,
+        tiempo_ms 
+      });
+      
     } else if (tipo === 'image-to-image') {
+      // ✅ Buscar IMÁGENES usando imagen
+      console.log('   🖼️ Generando embedding de IMAGEN para buscar IMÁGENES...');
+      
+      filters = {
+        ...filters,
+        referenceCollection: 'images',
+        tipo: 'image'
+      };
+      
+      vectorIndexName = vectorIndexName || this.defaultImageIndex;
+      
       const { embedding: emb, tiempo_ms } = await embeddingService.generateImageEmbedding(queryOrImageUrl);
-      return this.searchByEmbedding(emb, { limit, vectorIndexName, filters: options.filters });
+      
+      console.log(`   ✅ Embedding de imagen generado (${emb.length} dims)`);
+      console.log(`   🔎 Buscando en colección: images`);
+      
+      return this.searchByEmbedding(emb, { 
+        limit, 
+        vectorIndexName, 
+        filters,
+        tiempo_ms 
+      });
+      
+    } else if (tipo === 'text-to-text') {
+      // ✅ Buscar DOCUMENTOS usando texto
+      console.log('   📝 Generando embedding de TEXTO para buscar DOCUMENTOS...');
+      
+      filters = {
+        ...filters,
+        referenceCollection: 'documents',
+        tipo: 'text'
+      };
+      
+      vectorIndexName = vectorIndexName || this.defaultTextIndex;
+      
+      const { embedding: emb, tiempo_ms } = await embeddingService.generateTextEmbedding(queryOrImageUrl);
+      
+      return this.searchByEmbedding(emb, { 
+        limit, 
+        vectorIndexName, 
+        filters,
+        tiempo_ms 
+      });
+      
     } else {
-      throw new Error('Tipo multimodal no soportado');
+      throw new Error(`Tipo multimodal no soportado: ${tipo}`);
     }
   }
 
@@ -265,40 +325,103 @@ class VectorSearchService {
     const limit = options.limit || this.defaultTopK;
     const candidateK = options.candidateLimit || Math.max(limit * 10, 100);
     const filters = options.filters || {};
-    const vectorIndexName = options.vectorIndexName || this.defaultTextIndex;
+    let vectorIndexName = options.vectorIndexName || this.defaultTextIndex;
+    const tiempo_embed = options.tiempo_ms || 0;
 
-    const pipeline = [
-      {
-        $search: {
-          index: vectorIndexName,
-          knnBeta: {
-            vector: inputEmbedding,
-            path: 'embedding',
-            k: candidateK
-          }
-        }
-      }
-    ];
+    // Intentar ejecutar la agregación $search con varios nombres de índice si el primero falla.
+    const indexCandidates = [];
+    // Priorizar el índice recibido en opciones
+    if (vectorIndexName) indexCandidates.push(vectorIndexName);
+    // Añadir índices por defecto (texto/imagen) como fallback
+    if (!indexCandidates.includes(this.defaultImageIndex)) indexCandidates.push(this.defaultImageIndex);
+    if (!indexCandidates.includes('vector_index_embeddings')) indexCandidates.push('vector_index_embeddings');
 
     const match = this._buildMatch(filters);
-    if (Object.keys(match).length > 0) pipeline.push({ $match: match });
+    if (Object.keys(match).length > 0) {
+      console.log(`   🔧 Aplicando filtros:`, JSON.stringify(match));
+    }
 
-    pipeline.push(
-      {
-        $project: {
-          referenceId: 1,
-          referenceCollection: 1,
-          modelo: 1,
-          tipo: 1,
-          fecha: 1,
-          embedding: 1
+    let lastError = null;
+    let candidates = [];
+    let searchTime = 0;
+    // Probar cada índice candidato hasta obtener resultados o agotar la lista
+    for (const idxName of indexCandidates) {
+      try {
+        vectorIndexName = idxName; // para logs
+        const pipeline = [
+          {
+            $search: {
+              index: idxName,
+              knnBeta: {
+                vector: inputEmbedding,
+                path: 'embedding',
+                k: candidateK
+              }
+            }
+          }
+        ];
+
+        if (Object.keys(match).length > 0) pipeline.push({ $match: match });
+
+        pipeline.push(
+          {
+            $project: {
+              referenceId: 1,
+              referenceCollection: 1,
+              modelo: 1,
+              tipo: 1,
+              fecha: 1,
+              embedding: 1
+            }
+          },
+          { $limit: candidateK }
+        );
+
+        console.log(`   🔎 Ejecutando $search con índice: ${idxName}`);
+        const searchStart = Date.now();
+        candidates = await this.embeddingsColl.aggregate(pipeline).toArray();
+        searchTime = Date.now() - searchStart;
+        console.log(`   📊 Candidatos encontrados con índice '${idxName}': ${candidates.length} en ${searchTime}ms`);
+
+        // Si obtuvimos candidatos, salimos del loop
+        break;
+      } catch (error) {
+        lastError = error;
+        console.warn(`   ⚠️  Error ejecutando $search con índice '${idxName}': ${error.message}`);
+        // continuar con el siguiente índice
+      }
+    }
+
+    if ((!candidates || candidates.length === 0) && lastError) {
+      // Si hubo un error en todos los intentos, devolver el último error para debugging
+      console.error('   ❌ $search falló en todos los índices intentados. Último error:', lastError.message);
+    }
+
+    if (!candidates || candidates.length === 0) {
+      return {
+        success: true,
+        results: [],
+        total: 0,
+        timings: {
+          embed_ms: tiempo_embed,
+          search_ms: searchTime,
+          total_ms: tiempo_embed + searchTime
         }
-      },
-      { $limit: candidateK }
-    );
+      };
+    }
 
-    const candidates = await this.embeddingsColl.aggregate(pipeline).toArray();
-    if (!candidates || candidates.length === 0) return { success: true, results: [] };
+    if (!candidates || candidates.length === 0) {
+      return { 
+        success: true, 
+        results: [],
+        total: 0,
+        timings: {
+          embed_ms: tiempo_embed,
+          search_ms: searchTime,
+          total_ms: tiempo_embed + searchTime
+        }
+      };
+    }
 
     const scored = candidates.map(c => {
       let sim = 0;
@@ -327,7 +450,21 @@ class VectorSearchService {
       });
     }
 
-    return { success: true, results };
+    console.log(`   ✅ Resultados finales: ${results.length}`);
+    if (results.length > 0) {
+      console.log(`   🏆 Mejor score: ${results[0].score.toFixed(4)}`);
+    }
+
+    return { 
+      success: true, 
+      results,
+      total: results.length,
+      timings: {
+        embed_ms: tiempo_embed,
+        search_ms: searchTime,
+        total_ms: tiempo_embed + searchTime
+      }
+    };
   }
 
   // ---------- searchSimilarDocuments ----------
@@ -335,13 +472,26 @@ class VectorSearchService {
     await this.initialize();
     if (!documentId) throw new Error('documentId requerido');
 
-    // Buscar embedding del documento guardado en embeddings collection
-    const embDoc = await this.embeddingsColl.findOne({ referenceId: documentId, referenceCollection: 'documents', tipo: 'text' });
-    if (!embDoc) return { success: false, results: [], error: 'No embedding encontrado para el documentId' };
+    const embDoc = await this.embeddingsColl.findOne({ 
+      referenceId: documentId, 
+      referenceCollection: 'documents', 
+      tipo: 'text' 
+    });
+    
+    if (!embDoc) {
+      return { 
+        success: false, 
+        results: [], 
+        error: 'No embedding encontrado para el documentId' 
+      };
+    }
 
     const inputEmbedding = embDoc.embedding;
     const resultsObj = await this.searchByEmbedding(inputEmbedding, options);
-    const filtered = (resultsObj.results || []).filter(r => String(r.referenceId) !== String(documentId));
+    const filtered = (resultsObj.results || []).filter(r => 
+      String(r.referenceId) !== String(documentId)
+    );
+    
     return { success: true, results: filtered };
   }
 }

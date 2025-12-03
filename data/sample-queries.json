@@ -1,0 +1,130 @@
+{
+  "ejemplos": [
+    {
+      "tipo": "semantica_simple",
+      "nombre": "Búsqueda Semántica Simple",
+      "descripcion": "Búsqueda vectorial básica sobre medicamentos para dolor",
+      "endpoint": "POST /api/search",
+      "request": {
+        "query": "medicamentos para el dolor de cabeza",
+        "limit": 5
+      },
+      "curl": "curl -X POST http://localhost:3000/api/search -H 'Content-Type: application/json' -d '{\"query\": \"medicamentos para el dolor de cabeza\", \"limit\": 5}'"
+    },
+    {
+      "tipo": "hibrida_con_filtros",
+      "nombre": "Búsqueda Híbrida con Filtros",
+      "descripcion": "Combina búsqueda vectorial con filtros específicos",
+      "endpoint": "POST /api/search",
+      "request": {
+        "query": "antibióticos efectivos para infecciones",
+        "filters": {
+          "tipo": "medicamento",
+          "idioma": "es"
+        },
+        "hybrid": true,
+        "limit": 5
+      },
+      "curl": "curl -X POST http://localhost:3000/api/search -H 'Content-Type: application/json' -d '{\"query\": \"antibióticos efectivos para infecciones\", \"filters\": {\"tipo\": \"medicamento\", \"idioma\": \"es\"}, \"hybrid\": true, \"limit\": 5}'"
+    },
+    {
+      "tipo": "rag_complejo",
+      "nombre": "RAG - Pregunta Compleja",
+      "descripcion": "Pipeline RAG completo con generación de respuesta usando LLM",
+      "endpoint": "POST /api/rag",
+      "request": {
+        "pregunta": "¿Qué precauciones debo tener al tomar ibuprofeno con otros medicamentos?",
+        "max_contexto": 3,
+        "temperature": 0.7
+      },
+      "curl": "curl -X POST http://localhost:3000/api/rag -H 'Content-Type: application/json' -d '{\"pregunta\": \"¿Qué precauciones debo tener al tomar ibuprofeno con otros medicamentos?\", \"max_contexto\": 3}'"
+    },
+    {
+      "tipo": "multimodal",
+      "nombre": "Búsqueda Multimodal (Texto → Imágenes)",
+      "descripcion": "Búsqueda de imágenes usando descripción de texto",
+      "endpoint": "POST /api/search/multimodal",
+      "request": {
+        "query": "pastillas para la presión arterial",
+        "tipo": "text-to-image",
+        "limit": 5
+      },
+      "curl": "curl -X POST http://localhost:3000/api/search/multimodal -H 'Content-Type: application/json' -d '{\"query\": \"pastillas para la presión arterial\", \"tipo\": \"text-to-image\", \"limit\": 5}'"
+    },
+    {
+      "tipo": "rag_contextualizado",
+      "nombre": "RAG Contextualizado",
+      "descripcion": "RAG con contexto adicional del usuario",
+      "endpoint": "POST /api/rag",
+      "request": {
+        "pregunta": "¿Qué interacciones tiene este medicamento?",
+        "contexto_adicional": "Paciente toma aspirina diaria y tiene hipertensión",
+        "max_contexto": 5,
+        "filters": {
+          "tipo": "medicamento"
+        }
+      },
+      "curl": "curl -X POST http://localhost:3000/api/rag -H 'Content-Type: application/json' -d '{\"pregunta\": \"¿Qué interacciones tiene este medicamento?\", \"contexto_adicional\": \"Paciente toma aspirina diaria y tiene hipertensión\", \"max_contexto\": 5, \"filters\": {\"tipo\": \"medicamento\"}}'"
+    }
+  ],
+  "casos_de_uso_adicionales": [
+    {
+      "nombre": "Documentos Similares",
+      "descripcion": "Encontrar documentos similares a uno específico",
+      "curl": "curl http://localhost:3000/api/search/similar/{DOCUMENT_ID}?limit=5"
+    },
+    {
+      "nombre": "RAG Conversacional",
+      "descripcion": "Mantener contexto de conversación",
+      "endpoint": "POST /api/rag/conversational",
+      "request": {
+        "mensajes": [
+          {"role": "user", "content": "¿Qué es el ibuprofeno?"},
+          {"role": "assistant", "content": "El ibuprofeno es un antiinflamatorio..."},
+          {"role": "user", "content": "¿Tiene efectos secundarios?"}
+        ],
+        "max_contexto": 3
+      }
+    },
+    {
+      "nombre": "Batch Processing",
+      "descripcion": "Procesar múltiples preguntas en una sola petición",
+      "endpoint": "POST /api/rag/batch",
+      "request": {
+        "preguntas": [
+          "¿Qué es la metformina?",
+          "¿Cuáles son los efectos del paracetamol?",
+          "¿Cómo funcionan las estatinas?"
+        ],
+        "max_contexto": 3
+      }
+    }
+  ],
+  "tests_recomendados": [
+    {
+      "test": "Precisión Semántica",
+      "descripcion": "Verificar que la búsqueda semántica encuentra documentos relevantes aunque no contengan las palabras exactas",
+      "ejemplo": "Buscar 'dolor muscular' debería encontrar documentos sobre ibuprofeno y AINEs"
+    },
+    {
+      "test": "Filtros Híbridos",
+      "descripcion": "Verificar que los filtros funcionan correctamente con búsqueda vectorial",
+      "ejemplo": "Buscar solo medicamentos en español del último mes"
+    },
+    {
+      "test": "Calidad RAG",
+      "descripcion": "Verificar que las respuestas RAG usan el contexto correcto y citan fuentes",
+      "ejemplo": "La respuesta debe mencionar de qué documento proviene la información"
+    },
+    {
+      "test": "Manejo de No-Resultados",
+      "descripcion": "Verificar comportamiento cuando no hay contexto relevante",
+      "ejemplo": "Preguntar sobre algo no relacionado con medicamentos"
+    },
+    {
+      "test": "Performance",
+      "descripcion": "Medir tiempos de respuesta",
+      "objetivo": "Búsqueda < 200ms, RAG completo < 2s"
+    }
+  ]
+}

@@ -40,11 +40,7 @@ dump/
 backup/
 *.bson
 
-# Data files (si no quieres subir datos de ejemplo)
-data/*.json
-data/*.csv
-data/*.db
-data/*.sqlite
+
 
 # Uploaded or generated files
 uploads/
