@@ -29,7 +29,8 @@ class RAGService {
       
       const searchResults = await vectorSearchService.searchByText(pregunta, {
         limit: maxContexto,
-        filters
+        filters,
+        vectorIndexName: 'vector_index_medicamentos'
       });
 
       timings.search_ms = Date.now() - searchStart;
