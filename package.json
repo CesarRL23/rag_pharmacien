@@ -9,7 +9,8 @@
     "create-indexes": "node scripts/create-indexes.js",
     "ingest-docs": "node scripts/ingest-documents.js",
     "ingest-images": "node scripts/ingest-images.js",
-    "test": "jest"
+    "test": "jest",
+    "test-clip": "node scripts/test-clip.js"
   },
   "keywords": [
     "rag",

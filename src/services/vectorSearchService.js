@@ -2,7 +2,6 @@
 const { getDB } = require('../config/db');
 const Document = require('../models/Document');
 const Image = require('../models/Image');
-const Embedding = require('../models/Embedding'); // tu wrapper actual sobre la colección embeddings
 const embeddingService = require('./embeddingService');
 
 class VectorSearchService {
@@ -10,7 +9,6 @@ class VectorSearchService {
     this.db = null;
     this.embeddingsColl = null;
     this.initialized = false;
-    // Nombre por defecto del índice vectorial que creaste en Atlas
     this.defaultTextIndex = 'vector_index_embeddings_text_384';
     this.defaultImageIndex = 'vector_index_embeddings_img_512';
     this.defaultTopK = 5;
@@ -23,18 +21,17 @@ class VectorSearchService {
     this.initialized = true;
   }
 
-  // --------- Helper: build filters (simple) ----------
   _buildMatch(filters = {}) {
     const match = {};
     if (filters.referenceCollection) match.referenceCollection = filters.referenceCollection;
     if (filters.tipo) match.tipo = filters.tipo;
     if (filters.modelo) match.modelo = filters.modelo;
     if (filters.referenceId) match.referenceId = filters.referenceId;
-    if (filters.fechaDesde) match.fecha = match.fecha || {};
-    if (filters.fechaDesde) match.fecha.$gte = new Date(filters.fechaDesde);
-    if (filters.fechaHasta) match.fecha = match.fecha || {};
-    if (filters.fechaHasta) match.fecha.$lte = new Date(filters.fechaHasta);
-    // metadata.* assumed already stored in embeddings docs
+    if (filters.fechaDesde || filters.fechaHasta) {
+      match.fecha = {};
+      if (filters.fechaDesde) match.fecha.$gte = new Date(filters.fechaDesde);
+      if (filters.fechaHasta) match.fecha.$lte = new Date(filters.fechaHasta);
+    }
     if (filters.metadata && typeof filters.metadata === 'object') {
       for (const [k, v] of Object.entries(filters.metadata)) {
         match[`metadata.${k}`] = v;
@@ -43,20 +40,30 @@ class VectorSearchService {
     return match;
   }
 
-  // --------- searchByText: genera embedding y usa $vectorSearch (knnBeta) ----------
+  // ---------- Helper: fetch referenced doc ----------
+  async _resolveReference(refCollection, refId) {
+    try {
+      if (refCollection === 'documents') return await Document.findById(refId);
+      if (refCollection === 'images') return await Image.findById(refId);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ---------- searchByText: generate embedding, knnBeta, compute cos locally ----------
   async searchByText(query, options = {}) {
     await this.initialize();
     if (!query || typeof query !== 'string') throw new Error('query debe ser string');
 
     const limit = options.limit || this.defaultTopK;
+    // candidateK: cuantos candidatos sacar del knn para luego rankear localmente
     const candidateK = options.candidateLimit || Math.max(limit * 10, 50);
     const filters = options.filters || {};
     const vectorIndexName = options.vectorIndexName || this.defaultTextIndex;
 
-    // 1) generar embedding para query
     const { embedding: queryEmbedding, tiempo_ms } = await embeddingService.generateTextEmbedding(query);
 
-    // 2) pipeline $vectorSearch (knnBeta)
     const pipeline = [
       {
         $search: {
@@ -73,16 +80,16 @@ class VectorSearchService {
     const match = this._buildMatch(filters);
     if (Object.keys(match).length > 0) pipeline.push({ $match: match });
 
+    // Proyectamos EL embedding (necesario para cálculo local), y campos útiles
     pipeline.push(
       {
         $project: {
-          embedding: 0,
           referenceId: 1,
           referenceCollection: 1,
           modelo: 1,
           tipo: 1,
           fecha: 1,
-          score: { $meta: 'vectorScore' }
+          embedding: 1
         }
       },
       { $limit: candidateK }
@@ -90,24 +97,34 @@ class VectorSearchService {
 
     const candidates = await this.embeddingsColl.aggregate(pipeline).toArray();
 
-    // 3) top-K final (resolver referencias)
-    const top = candidates.slice(0, limit);
+    // Si no hay candidatos regresamos vacío
+    if (!candidates || candidates.length === 0) {
+      return { query, success: true, results: [], timings: { embed_ms: tiempo_ms } };
+    }
+
+    // Calcular similitud coseno localmente y ordenar
+    const scored = candidates.map(c => {
+      let sim = 0;
+      try {
+        sim = embeddingService.cosineSimilarity(queryEmbedding, c.embedding);
+      } catch (e) {
+        sim = 0;
+      }
+      return { ...c, score: sim };
+    });
+
+    // Orden descendente por score
+    scored.sort((a, b) => b.score - a.score);
+
+    // Tomar top-K finales
+    const top = scored.slice(0, limit);
+
+    // Resolver referencias (Document/Image) — puedes optimizar con $lookup si quieres
     const results = [];
     for (const c of top) {
-      let referenced = null;
-      try {
-        if (c.referenceCollection === 'documents') {
-          referenced = await Document.findById(c.referenceId);
-        } else if (c.referenceCollection === 'images') {
-          referenced = await Image.findById(c.referenceId);
-        }
-      } catch (err) {
-        referenced = null;
-      }
-
+      const referenced = await this._resolveReference(c.referenceCollection, c.referenceId);
       results.push({
-        score: c.score ?? null,
-        embedding_score: c.score ?? null,
+        score: c.score,
         referenceId: c.referenceId,
         referenceCollection: c.referenceCollection,
         modelo: c.modelo,
@@ -127,7 +144,7 @@ class VectorSearchService {
     };
   }
 
-  // --------- hybridSearch: usa texto + knn en should (compound) ----------
+  // ---------- hybridSearch: same idea but with compound search ----------
   async hybridSearch(query, options = {}) {
     await this.initialize();
     if (!query || typeof query !== 'string') throw new Error('query debe ser string');
@@ -137,18 +154,16 @@ class VectorSearchService {
     const filters = options.filters || {};
     const vectorIndexName = options.vectorIndexName || this.defaultTextIndex;
 
-    // generar embedding
     const { embedding: queryEmbedding, tiempo_ms } = await embeddingService.generateTextEmbedding(query);
 
-    // compound search: texto sobre metadata + knnBeta
-    const must = [];
-    // example: allow text match over some metadata fields if present
-    must.push({
-      text: {
-        query,
-        path: ['modelo', 'tipo', 'referenceCollection']
+    const must = [
+      {
+        text: {
+          query,
+          path: ['modelo', 'tipo', 'referenceCollection']
+        }
       }
-    });
+    ];
 
     const should = [
       {
@@ -176,23 +191,42 @@ class VectorSearchService {
     if (Object.keys(match).length > 0) pipeline.push({ $match: match });
 
     pipeline.push(
-      { $project: { embedding: 0, referenceId: 1, referenceCollection: 1, modelo: 1, tipo: 1, fecha: 1, score: { $meta: 'vectorScore' } } },
+      {
+        $project: {
+          referenceId: 1,
+          referenceCollection: 1,
+          modelo: 1,
+          tipo: 1,
+          fecha: 1,
+          embedding: 1
+        }
+      },
       { $limit: candidateK }
     );
 
     const candidates = await this.embeddingsColl.aggregate(pipeline).toArray();
-    const top = candidates.slice(0, limit);
+    if (!candidates || candidates.length === 0) {
+      return { query, success: true, results: [], timings: { embed_ms: tiempo_ms } };
+    }
+
+    const scored = candidates.map(c => {
+      let sim = 0;
+      try {
+        sim = embeddingService.cosineSimilarity(queryEmbedding, c.embedding);
+      } catch (e) {
+        sim = 0;
+      }
+      return { ...c, score: sim };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    const top = scored.slice(0, limit);
 
     const results = [];
     for (const c of top) {
-      let referenced = null;
-      try {
-        if (c.referenceCollection === 'documents') referenced = await Document.findById(c.referenceId);
-        else if (c.referenceCollection === 'images') referenced = await Image.findById(c.referenceId);
-      } catch (err) { referenced = null; }
-
+      const referenced = await this._resolveReference(c.referenceCollection, c.referenceId);
       results.push({
-        score: c.score ?? null,
+        score: c.score,
         referenceId: c.referenceId,
         referenceCollection: c.referenceCollection,
         modelo: c.modelo,
@@ -202,37 +236,28 @@ class VectorSearchService {
       });
     }
 
-    return {
-      query,
-      success: true,
-      results,
-      timings: { embed_ms: tiempo_ms }
-    };
+    return { query, success: true, results, timings: { embed_ms: tiempo_ms } };
   }
 
-  // --------- multimodalSearch: maneja text->image o image->image ----------
+  // ---------- multimodalSearch ----------
   async multimodalSearch(queryOrImageUrl, options = {}) {
     await this.initialize();
-    const tipo = (options.tipo || 'text-to-image'); // text-to-image | image-to-image | text-to-text
+    const tipo = (options.tipo || 'text-to-image');
     const limit = options.limit || this.defaultTopK;
     const vectorIndexName = options.vectorIndexName || (tipo.startsWith('image') ? this.defaultImageIndex : this.defaultTextIndex);
 
     if (tipo === 'text-to-image' || tipo === 'text-to-text') {
-      // generar embedding de texto y buscar (si text-to-image, index debe ser de imágenes)
-      const { embedding: emb } = await embeddingService.generateTextEmbedding(queryOrImageUrl);
-      const results = await this.searchByEmbedding(emb, { limit, vectorIndexName, filters: options.filters });
-      return results;
+      const { embedding: emb, tiempo_ms } = await embeddingService.generateTextEmbedding(queryOrImageUrl);
+      return this.searchByEmbedding(emb, { limit, vectorIndexName, filters: options.filters });
     } else if (tipo === 'image-to-image') {
-      // si el usuario pasó una URL, intentamos generar embedding de imagen (placeholder)
-      const { embedding: emb } = await embeddingService.generateImageEmbedding(queryOrImageUrl);
-      const results = await this.searchByEmbedding(emb, { limit, vectorIndexName, filters: options.filters });
-      return results;
+      const { embedding: emb, tiempo_ms } = await embeddingService.generateImageEmbedding(queryOrImageUrl);
+      return this.searchByEmbedding(emb, { limit, vectorIndexName, filters: options.filters });
     } else {
       throw new Error('Tipo multimodal no soportado');
     }
   }
 
-  // --------- searchByEmbedding: buscar por vector directamente ----------
+  // ---------- searchByEmbedding ----------
   async searchByEmbedding(inputEmbedding, options = {}) {
     await this.initialize();
     if (!Array.isArray(inputEmbedding)) throw new Error('inputEmbedding debe ser un array');
@@ -258,21 +283,41 @@ class VectorSearchService {
     const match = this._buildMatch(filters);
     if (Object.keys(match).length > 0) pipeline.push({ $match: match });
 
-    pipeline.push({ $project: { embedding: 0, referenceId: 1, referenceCollection: 1, modelo: 1, tipo: 1, fecha: 1, score: { $meta: 'vectorScore' } } }, { $limit: candidateK });
+    pipeline.push(
+      {
+        $project: {
+          referenceId: 1,
+          referenceCollection: 1,
+          modelo: 1,
+          tipo: 1,
+          fecha: 1,
+          embedding: 1
+        }
+      },
+      { $limit: candidateK }
+    );
 
     const candidates = await this.embeddingsColl.aggregate(pipeline).toArray();
-    const top = candidates.slice(0, limit);
+    if (!candidates || candidates.length === 0) return { success: true, results: [] };
+
+    const scored = candidates.map(c => {
+      let sim = 0;
+      try {
+        sim = embeddingService.cosineSimilarity(inputEmbedding, c.embedding);
+      } catch (e) {
+        sim = 0;
+      }
+      return { ...c, score: sim };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    const top = scored.slice(0, limit);
 
     const results = [];
     for (const c of top) {
-      let referenced = null;
-      try {
-        if (c.referenceCollection === 'documents') referenced = await Document.findById(c.referenceId);
-        else if (c.referenceCollection === 'images') referenced = await Image.findById(c.referenceId);
-      } catch (err) { referenced = null; }
-
+      const referenced = await this._resolveReference(c.referenceCollection, c.referenceId);
       results.push({
-        score: c.score ?? null,
+        score: c.score,
         referenceId: c.referenceId,
         referenceCollection: c.referenceCollection,
         modelo: c.modelo,
@@ -285,17 +330,16 @@ class VectorSearchService {
     return { success: true, results };
   }
 
-  // --------- searchSimilarDocuments: busca embeddings del documentId y hace knn ----------
+  // ---------- searchSimilarDocuments ----------
   async searchSimilarDocuments(documentId, options = {}) {
     await this.initialize();
     if (!documentId) throw new Error('documentId requerido');
 
-    // 1) buscar embedding asociado al documento
+    // Buscar embedding del documento guardado en embeddings collection
     const embDoc = await this.embeddingsColl.findOne({ referenceId: documentId, referenceCollection: 'documents', tipo: 'text' });
     if (!embDoc) return { success: false, results: [], error: 'No embedding encontrado para el documentId' };
 
     const inputEmbedding = embDoc.embedding;
-    // 2) hacer searchByEmbedding pero excluir el mismo documento
     const resultsObj = await this.searchByEmbedding(inputEmbedding, options);
     const filtered = (resultsObj.results || []).filter(r => String(r.referenceId) !== String(documentId));
     return { success: true, results: filtered };
