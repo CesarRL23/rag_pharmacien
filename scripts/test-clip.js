@@ -61,8 +61,9 @@ async function testCLIP() {
 
     // Test 4: Calcular similitud entre embeddings de imagen
     console.log('\n\n📌 Test 4: Calcular similitud coseno entre embeddings de imagen');
+    let similarity = null;
     if (imageResults.length >= 2) {
-      const similarity = embeddingService.cosineSimilarity(
+      similarity = embeddingService.cosineSimilarity(
         imageResults[0].embedding,
         imageResults[1].embedding
       );
@@ -111,7 +112,7 @@ async function testCLIP() {
     console.log(`   ✅ Embeddings de texto: ${textResult.dimensiones}D`);
     console.log(`   ✅ Embeddings de imagen: ${imageResults[0].dimensiones}D`);
     console.log(`   ✅ Imágenes procesadas: ${imageResults.length}`);
-    console.log(`   ✅ Similitud calculada: ${similarity?.toFixed(4) || 'N/A'}`);
+    console.log(`   ✅ Similitud calculada: ${similarity ? similarity.toFixed(4) : 'N/A'}`);
     console.log('');
 
     process.exit(0);
