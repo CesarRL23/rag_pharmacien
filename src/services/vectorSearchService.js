@@ -1,218 +1,231 @@
 // src/services/vectorSearchService.js
+const { getDB } = require('../config/db');
 const Document = require('../models/Document');
 const Image = require('../models/Image');
-const Embedding = require('../models/Embedding');
 const embeddingService = require('./embeddingService');
 
-/**
- * VectorSearchService
- * - searchByText(query, options)
- * - searchByEmbedding(embedding, options)
- *
- * options (comunes):
- *   - limit: número de resultados finales (topK). default 5
- *   - candidateLimit: cuántos embeddings candidatos traer para calcular similitud (limit internal). default 500
- *   - filters: objeto con filtros aplicables (language, tipo, referenceCollection, dateFrom, dateTo, metadata.*)
- *   - type: 'text' | 'image' | 'all' (qué tipo de embeddings buscar)
- */
 class VectorSearchService {
   constructor() {
-    // valores por defecto
     this.defaultTopK = 5;
-    this.defaultCandidateLimit = 500;
   }
 
-  // Convierte filtros de alto nivel a query para la colección embeddings
-  buildEmbeddingQuery(filters = {}, tipoAllowed = []) {
-    const q = {};
-
-    // Si el usuario pasa tipo(s) explícitos para embeddings (text|image)
-    if (filters.tipo) {
-      q.tipo = filters.tipo;
-    } else if (tipoAllowed.length === 1) {
-      q.tipo = tipoAllowed[0];
-    } // si tipoAllowed vacío, no forzamos
-
-    // Filtrado por referencia a collection (documents/images)
-    if (filters.referenceCollection) q.referenceCollection = filters.referenceCollection;
-
-    // Filtrado por fecha en el documento referenciado (no siempre aplicable)
-    // Para filtrar por fecha/idioma a nivel de embedding, asumimos que esos campos
-    // también están en el documento de embedding metadata, si no, se requieren joins.
-    if (filters.dateFrom || filters.dateTo) {
-      q.fecha = {};
-      if (filters.dateFrom) q.fecha.$gte = new Date(filters.dateFrom);
-      if (filters.dateTo) q.fecha.$lte = new Date(filters.dateTo);
-    }
-
-    // Filtrado por metadata (si guardas metadata en embeddings)
-    if (filters.metadata && typeof filters.metadata === 'object') {
-      for (const [k, v] of Object.entries(filters.metadata)) {
-        q[`metadata.${k}`] = v;
-      }
-    }
-
-    // NOTA: filtros como language/tipoDocumento que estén en documents deberían usar $lookup
-    // o filtrarse después de resolver los referenceIds. Aquí priorizamos filtros sobre embeddings.
-    return q;
-  }
-
-  // Busca por texto (genera embedding de la query)
+  /**
+   * Busca por texto usando Atlas Vector Search (knn)
+   * options:
+   *  - limit: número final de resultados (topK)
+   *  - filters: objeto con filtros aplicables (referenceCollection, tipo, metadata.*)
+   *  - vectorIndexName: nombre del index knn en Atlas (opcional)
+   */
   async searchByText(query, options = {}) {
     if (!query || typeof query !== 'string') throw new Error('query debe ser un string');
 
+    const db = getDB();
+    const embeddingsColl = db.collection('embeddings');
     const topK = options.limit || this.defaultTopK;
-    const candidateLimit = options.candidateLimit || this.defaultCandidateLimit;
+    const candidateLimit = options.candidateLimit || Math.max(100, topK * 10);
     const filters = options.filters || {};
-    const type = options.type || 'text'; // 'text'|'image'|'all'
+    const vectorIndexName = options.vectorIndexName || 'embeddings_vector_idx';
 
-    const start = Date.now();
-    // 1) generar embedding de query
+    // 1) generar embedding de la query
     const genStart = Date.now();
     const { embedding: queryEmbedding } = await embeddingService.generateTextEmbedding(query);
     const genMs = Date.now() - genStart;
 
-    // 2) construir query para embeddings
-    const tipoAllowed = type === 'all' ? [] : [type];
-    const embQuery = this.buildEmbeddingQuery(filters, tipoAllowed);
+    // 2) construir pipeline de agregación usando $search (Atlas Vector Search)
+    const mustFilters = [];
 
-    // 3) traer candidatos desde collection embeddings
-    // pedimos candidateLimit para luego rankear localmente
-    const candidates = await Embedding.findMany(embQuery, { limit: candidateLimit });
-
-    // 4) calcular similitud contra cada candidato
-    const scored = [];
-    for (const cand of candidates) {
-      if (!Array.isArray(cand.embedding) || cand.embedding.length === 0) continue;
-      let sim = 0;
-      try {
-        sim = embeddingService.cosineSimilarity(queryEmbedding, cand.embedding);
-      } catch (err) {
-        // ignora vectores con dimensión no coincidente
-        continue;
+    // Si el usuario pide filtrar por referenceCollection (documents/images)
+    if (filters.referenceCollection) {
+      mustFilters.push({ equals: { path: 'referenceCollection', value: filters.referenceCollection } });
+    }
+    // Filtrar por tipo de embedding (text|image)
+    if (filters.tipo) {
+      mustFilters.push({ equals: { path: 'tipo', value: filters.tipo } });
+    }
+    // Filtros arbitrarios sobre metadata.* si existen en embeddings
+    if (filters.metadata && typeof filters.metadata === 'object') {
+      for (const [k, v] of Object.entries(filters.metadata)) {
+        mustFilters.push({ equals: { path: `metadata.${k}`, value: v } });
       }
-      scored.push({
-        similarity: sim,
-        embeddingDoc: cand
-      });
     }
 
-    // 5) ordenar y limitar topK
-    scored.sort((a, b) => b.similarity - a.similarity);
-    const top = scored.slice(0, topK);
+    const searchStage = {
+      $search: {
+        index: vectorIndexName,
+        knnBeta: {
+          vector: queryEmbedding,
+          path: 'embedding',
+          k: candidateLimit
+        }
+      }
+    };
 
-    // 6) resolver documentos/imagenes referenciados
+    // if we have metadata filters, add a compound stage to apply them after knn
+    const pipeline = [searchStage];
+
+    // Add a $match stage to apply additional filters (faster than client-side)
+    if (mustFilters.length > 0) {
+      // Convert mustFilters into $and match conditions on their fields
+      const matchQuery = {};
+      for (const m of mustFilters) {
+        // m is like { equals: { path: 'tipo', value: 'text' } }
+        const path = m.equals.path;
+        const value = m.equals.value;
+        // translate to match: { path: value }
+        // support nested path like metadata.someKey
+        matchQuery[path] = value;
+      }
+      pipeline.push({ $match: matchQuery });
+    }
+
+    // Project useful fields and keep score
+    pipeline.push(
+      {
+        $project: {
+          embedding: 0 // opcional: no devolver vector completo
+        }
+      },
+      { $limit: candidateLimit }
+    );
+
+    // 3) ejecutar agregación en collection embeddings
+    const aggStart = Date.now();
+    const cursor = embeddingsColl.aggregate(pipeline, { allowDiskUse: false });
+    const candidates = await cursor.toArray();
+    const aggMs = Date.now() - aggStart;
+
+    // 4) candidates ya están ordenados por similitud (Atlas devuelve por knn),
+    // limitar a topK y resolver referencias a documents/images
+    const top = candidates.slice(0, topK);
     const results = [];
-    for (const s of top) {
-      const e = s.embeddingDoc;
+
+    for (const c of top) {
       let referenced = null;
       try {
-        if (e.referenceCollection === 'documents') {
-          referenced = await Document.findById(e.referenceId);
-        } else if (e.referenceCollection === 'images') {
-          referenced = await Image.findById(e.referenceId);
+        if (c.referenceCollection === 'documents') {
+          referenced = await Document.findById(c.referenceId);
+        } else if (c.referenceCollection === 'images') {
+          referenced = await Image.findById(c.referenceId);
         } else {
-          // fallback: intentar documents primero
-          referenced = await Document.findById(e.referenceId) || await Image.findById(e.referenceId);
+          referenced = (await Document.findById(c.referenceId)) || (await Image.findById(c.referenceId));
         }
       } catch (err) {
         referenced = null;
       }
 
       results.push({
-        score: s.similarity,
-        embedding_score: s.similarity,
-        referenceId: e.referenceId,
-        referenceCollection: e.referenceCollection,
+        score: c.score || c._score || null,
+        embedding_score: c.score || c._score || null,
+        referenceId: c.referenceId,
+        referenceCollection: c.referenceCollection,
         embeddingDoc: {
-          _id: e._id,
-          modelo: e.modelo,
-          tipo: e.tipo,
-          fecha: e.fecha
+          _id: c._id,
+          modelo: c.modelo,
+          tipo: c.tipo,
+          fecha: c.fecha
         },
         document: referenced
       });
     }
-
-    const totalMs = Date.now() - start;
-
+    
     return {
       query,
       success: true,
       results,
       timings: {
         embed_ms: genMs,
-        total_ms: totalMs
+        agg_ms: aggMs,
+        total_ms: Date.now() - genStart
       }
     };
   }
 
-  // Buscar usando un embedding ya existente (por ejemplo imagen -> búsqueda de imágenes similares)
+  /**
+   * Buscar por embedding directly (ej. imagen -> buscar imágenes similares)
+   * options: same as searchByText, plus vectorIndexName
+   */
   async searchByEmbedding(inputEmbedding, options = {}) {
-    if (!Array.isArray(inputEmbedding)) throw new Error('inputEmbedding debe ser un array de numbers');
+    if (!Array.isArray(inputEmbedding)) throw new Error('inputEmbedding debe ser un array');
 
+    const db = getDB();
+    const embeddingsColl = db.collection('embeddings');
     const topK = options.limit || this.defaultTopK;
-    const candidateLimit = options.candidateLimit || this.defaultCandidateLimit;
+    const candidateLimit = options.candidateLimit || Math.max(100, topK * 10);
     const filters = options.filters || {};
-    const type = options.type || 'all'; // buscar entre 'image'|'text'|'all'
+    const vectorIndexName = options.vectorIndexName || 'embeddings_vector_idx';
 
-    const start = Date.now();
-
-    const tipoAllowed = type === 'all' ? [] : [type];
-    const embQuery = this.buildEmbeddingQuery(filters, tipoAllowed);
-
-    const candidates = await Embedding.findMany(embQuery, { limit: candidateLimit });
-
-    const scored = [];
-    for (const cand of candidates) {
-      if (!Array.isArray(cand.embedding) || cand.embedding.length === 0) continue;
-      try {
-        const sim = embeddingService.cosineSimilarity(inputEmbedding, cand.embedding);
-        scored.push({ similarity: sim, embeddingDoc: cand });
-      } catch (err) {
-        continue;
+    const mustFilters = [];
+    if (filters.referenceCollection) mustFilters.push({ equals: { path: 'referenceCollection', value: filters.referenceCollection } });
+    if (filters.tipo) mustFilters.push({ equals: { path: 'tipo', value: filters.tipo } });
+    if (filters.metadata && typeof filters.metadata === 'object') {
+      for (const [k, v] of Object.entries(filters.metadata)) {
+        mustFilters.push({ equals: { path: `metadata.${k}`, value: v } });
       }
     }
 
-    scored.sort((a, b) => b.similarity - a.similarity);
-    const top = scored.slice(0, topK);
+    const searchStage = {
+      $search: {
+        index: vectorIndexName,
+        knnBeta: {
+          vector: inputEmbedding,
+          path: 'embedding',
+          k: candidateLimit
+        }
+      }
+    };
 
+    const pipeline = [searchStage];
+    if (mustFilters.length > 0) {
+      const matchQuery = {};
+      for (const m of mustFilters) {
+        matchQuery[m.equals.path] = m.equals.value;
+      }
+      pipeline.push({ $match: matchQuery });
+    }
+
+    pipeline.push({ $project: { embedding: 0 } }, { $limit: candidateLimit });
+
+    const aggStart = Date.now();
+    const cursor = embeddingsColl.aggregate(pipeline);
+    const candidates = await cursor.toArray();
+    const aggMs = Date.now() - aggStart;
+
+    const top = candidates.slice(0, topK);
     const results = [];
-    for (const s of top) {
-      const e = s.embeddingDoc;
+    for (const c of top) {
       let referenced = null;
       try {
-        if (e.referenceCollection === 'documents') {
-          referenced = await Document.findById(e.referenceId);
-        } else if (e.referenceCollection === 'images') {
-          referenced = await Image.findById(e.referenceId);
+        if (c.referenceCollection === 'documents') {
+          referenced = await Document.findById(c.referenceId);
+        } else if (c.referenceCollection === 'images') {
+          referenced = await Image.findById(c.referenceId);
         }
       } catch (err) {
         referenced = null;
       }
 
       results.push({
-        score: s.similarity,
-        embedding_score: s.similarity,
-        referenceId: e.referenceId,
-        referenceCollection: e.referenceCollection,
+        score: c.score || c._score || null,
+        embedding_score: c.score || c._score || null,
+        referenceId: c.referenceId,
+        referenceCollection: c.referenceCollection,
         embeddingDoc: {
-          _id: e._id,
-          modelo: e.modelo,
-          tipo: e.tipo,
-          fecha: e.fecha
+          _id: c._id,
+          modelo: c.modelo,
+          tipo: c.tipo,
+          fecha: c.fecha
         },
         document: referenced
       });
     }
 
-    const totalMs = Date.now() - start;
+
+
     return {
       success: true,
       results,
-      timings: { total_ms: totalMs }
+      timings: { agg_ms: aggMs, total_ms: Date.now() - aggMs }
     };
   }
-}
-
+} 
 module.exports = new VectorSearchService();
