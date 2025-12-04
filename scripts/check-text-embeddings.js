@@ -4,12 +4,17 @@
  * Diagnostica embeddings de tipo 'text' en la colección 'embeddings'
  */
 
+require("dotenv").config();
+
 const { MongoClient } = require("mongodb");
 
-const MONGO_URI =
-  process.env.MONGO_URI ||
-  "mongodb+srv://Cesarandresrl08:AzG7YQdZUx7iG8d@cluster0.ofvze1d.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const MONGO_URI = process.env.MONGO_URI;
 const DB_NAME = process.env.MONGO_DB_NAME || "rag_pharmacien";
+
+if (!MONGO_URI) {
+  console.error("❌ Error: MONGO_URI no definido en .env");
+  process.exit(1);
+}
 
 async function checkTextEmbeddings() {
   const client = new MongoClient(MONGO_URI);
