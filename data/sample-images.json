@@ -4,7 +4,7 @@
     "titulo": "Pastilla Roja",
     "descripcion": "Pastilla para la presión arterial",
     "tipo": "medicamento",
-    "metadata": { "laboratorio": "Lab X" },
+    "metadata": { "laboratorio": "Lab X" }, 
     "fecha": "2025-01-01T00:00:00.000Z"
   },
   {

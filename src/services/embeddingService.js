@@ -1,5 +1,5 @@
-const { pipeline } = require('@xenova/transformers');
-const axios = require('axios');
+const { pipeline } = require("@xenova/transformers");
+const axios = require("axios");
 
 class EmbeddingService {
   constructor() {
@@ -8,20 +8,20 @@ class EmbeddingService {
     this.clipTextPipeline = null;
     this.initialized = false;
     this.clipInitialized = false;
-    this.textModel = 'Xenova/all-MiniLM-L6-v2';
-    this.imageModel = 'Xenova/clip-vit-base-patch32';
+    this.textModel = "Xenova/all-MiniLM-L6-v2";
+    this.imageModel = "Xenova/clip-vit-base-patch32";
   }
 
   async initialize() {
     if (this.initialized) return;
 
     try {
-      console.log('🔄 Inicializando modelo de embeddings para texto...');
-      this.textPipeline = await pipeline('feature-extraction', this.textModel);
+      console.log("🔄 Inicializando modelo de embeddings para texto...");
+      this.textPipeline = await pipeline("feature-extraction", this.textModel);
       this.initialized = true;
-      console.log('✅ Modelo de texto inicializado');
+      console.log("✅ Modelo de texto inicializado");
     } catch (error) {
-      console.error('❌ Error inicializando modelo de texto:', error);
+      console.error("❌ Error inicializando modelo de texto:", error);
       throw error;
     }
   }
@@ -30,24 +30,30 @@ class EmbeddingService {
     if (this.clipInitialized) return;
 
     try {
-      console.log('🔄 Inicializando modelo CLIP para imágenes...');
+      console.log("🔄 Inicializando modelo CLIP para imágenes...");
       this.imageFeaturePipeline = await pipeline(
-        'image-feature-extraction',
+        "image-feature-extraction",
         this.imageModel
       );
       // Intentar crear también un pipeline de texto usando el mismo modelo CLIP
       try {
-        this.clipTextPipeline = await pipeline('feature-extraction', this.imageModel);
-        console.log('✅ Pipeline de texto CLIP inicializado');
+        this.clipTextPipeline = await pipeline(
+          "feature-extraction",
+          this.imageModel
+        );
+        console.log("✅ Pipeline de texto CLIP inicializado");
       } catch (e) {
         // No crítico — puede fallar en algunos entornos
-        console.warn('⚠️ No se pudo inicializar pipeline de texto CLIP:', e.message);
+        console.warn(
+          "⚠️ No se pudo inicializar pipeline de texto CLIP:",
+          e.message
+        );
         this.clipTextPipeline = null;
       }
       this.clipInitialized = true;
-      console.log('✅ Modelo CLIP inicializado');
+      console.log("✅ Modelo CLIP inicializado");
     } catch (error) {
-      console.error('❌ Error inicializando CLIP:', error.message);
+      console.error("❌ Error inicializando CLIP:", error.message);
       throw error;
     }
   }
@@ -57,9 +63,9 @@ class EmbeddingService {
     if (!this.initialized) await this.initialize();
 
     const startTime = Date.now();
-    const output = await this.textPipeline(text, { 
-      pooling: 'mean', 
-      normalize: true 
+    const output = await this.textPipeline(text, {
+      pooling: "mean",
+      normalize: true,
     });
     const embedding = Array.from(output.data);
     const endTime = Date.now();
@@ -68,7 +74,7 @@ class EmbeddingService {
       embedding,
       dimensiones: embedding.length,
       modelo: this.textModel,
-      tiempo_ms: endTime - startTime
+      tiempo_ms: endTime - startTime,
     };
   }
 
@@ -93,22 +99,22 @@ class EmbeddingService {
       // 1. URLs (http/https)
       // 2. Rutas de archivo locales
       // 3. Buffers de imagen
-      
+
       let inputForCLIP = imageInput;
 
       // Si es base64, convertir a Buffer
-      if (typeof imageInput === 'string' && !imageInput.startsWith('http')) {
+      if (typeof imageInput === "string" && !imageInput.startsWith("http")) {
         console.log(`   📄 Convirtiendo base64 a Buffer...`);
-        
+
         // Extraer datos base64 si tiene prefijo data:image
         let base64Data = imageInput;
-        if (imageInput.startsWith('data:')) {
-          base64Data = imageInput.split(',')[1];
+        if (imageInput.startsWith("data:")) {
+          base64Data = imageInput.split(",")[1];
         }
-        
-        inputForCLIP = Buffer.from(base64Data, 'base64');
+
+        inputForCLIP = Buffer.from(base64Data, "base64");
         console.log(`   ✓ Buffer creado: ${inputForCLIP.length} bytes`);
-      } else if (imageInput.startsWith('http')) {
+      } else if (imageInput.startsWith("http")) {
         console.log(`   🌐 Procesando desde URL directamente...`);
       }
 
@@ -125,30 +131,40 @@ class EmbeddingService {
       } else if (Array.isArray(output)) {
         embedding = output;
       } else {
-        throw new Error('Formato de salida de CLIP no reconocido');
+        throw new Error("Formato de salida de CLIP no reconocido");
       }
 
       // Validar que el embedding sea real (no todos ceros)
-      const isValid = embedding.some(val => Math.abs(val) > 0.01);
+      const isValid = embedding.some((val) => Math.abs(val) > 0.01);
       if (!isValid) {
-        throw new Error('Embedding inválido: todos los valores son cercanos a cero');
+        throw new Error(
+          "Embedding inválido: todos los valores son cercanos a cero"
+        );
       }
 
       const endTime = Date.now();
 
-      console.log(`   ✅ Embedding generado: ${embedding.length} dims en ${endTime - startTime}ms`);
-      console.log(`   📊 Muestra: [${embedding.slice(0, 3).map(v => v.toFixed(4)).join(', ')}...]`);
+      console.log(
+        `   ✅ Embedding generado: ${embedding.length} dims en ${endTime - startTime}ms`
+      );
+      console.log(
+        `   📊 Muestra: [${embedding
+          .slice(0, 3)
+          .map((v) => v.toFixed(4))
+          .join(", ")}...]`
+      );
 
       return {
         embedding,
         dimensiones: embedding.length,
         modelo: this.imageModel,
         tiempo_ms: endTime - startTime,
-        fuente: 'CLIP-REAL'
+        fuente: "CLIP-REAL",
       };
-
     } catch (error) {
-      console.error(`   ❌ Error generando embedding de imagen: ${error.message}`);
+      console.error(
+        `   ❌ Error generando embedding de imagen: ${error.message}`
+      );
       throw error;
     }
   }
@@ -158,20 +174,23 @@ class EmbeddingService {
     await this.initializeCLIP();
 
     if (!this.clipTextPipeline) {
-      throw new Error('Pipeline de texto CLIP no disponible en este entorno');
+      throw new Error("Pipeline de texto CLIP no disponible en este entorno");
     }
 
     const startTime = Date.now();
-    const output = await this.clipTextPipeline(text, { pooling: 'mean', normalize: true });
+    const output = await this.clipTextPipeline(text, {
+      pooling: "mean",
+      normalize: true,
+    });
     const embedding = Array.from(output.data || output);
     const endTime = Date.now();
 
     return {
       embedding,
       dimensiones: embedding.length,
-      modelo: this.imageModel + '::text-encoder',
+      modelo: this.imageModel + "::text-encoder",
       tiempo_ms: endTime - startTime,
-      fuente: 'CLIP-TEXT'
+      fuente: "CLIP-TEXT",
     };
   }
 
@@ -197,7 +216,9 @@ class EmbeddingService {
       vecB = vecB.slice(0, minLen);
     }
 
-    let dot = 0, normA = 0, normB = 0;
+    let dot = 0,
+      normA = 0,
+      normB = 0;
     for (let i = 0; i < lenA; i++) {
       dot += vecA[i] * vecB[i];
       normA += vecA[i] ** 2;
@@ -205,7 +226,7 @@ class EmbeddingService {
     }
     normA = Math.sqrt(normA);
     normB = Math.sqrt(normB);
-    return (normA && normB) ? dot / (normA * normB) : 0;
+    return normA && normB ? dot / (normA * normB) : 0;
   }
 
   /** Retorna los topK embeddings más similares */
@@ -213,7 +234,7 @@ class EmbeddingService {
     const sims = candidateEmbeddings.map((candidate, idx) => ({
       index: idx,
       similarity: this.cosineSimilarity(queryEmbedding, candidate.embedding),
-      ...candidate
+      ...candidate,
     }));
     sims.sort((a, b) => b.similarity - a.similarity);
     return sims.slice(0, topK);
