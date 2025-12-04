@@ -52,15 +52,18 @@ class VectorSearchService {
     }
   }
 
-  // ---------- searchByText: generate embedding, knnBeta, compute cos locally ----------
+  // ---------- searchByText: delegate to searchByEmbedding with CLIP-text regeneration ----------
   async searchByText(query, options = {}) {
     await this.initialize();
     if (!query || typeof query !== "string")
       throw new Error("query debe ser string");
 
     const limit = options.limit || this.defaultTopK;
-    const candidateK = options.candidateLimit || Math.max(limit * 10, 50);
-    const filters = options.filters || {};
+    const filters = {
+      ...(options.filters || {}),
+      referenceCollection: "documents",
+      tipo: "text",
+    };
     const vectorIndexName = options.vectorIndexName || this.defaultTextIndex;
 
     const { embedding: queryEmbedding, tiempo_ms } =
@@ -68,119 +71,16 @@ class VectorSearchService {
 
     console.log(`🔎 Vector Search - Query: "${query}"`);
     console.log(`📊 Embedding generado: dimensión ${queryEmbedding.length}`);
-    console.log(`🏷️  Índice: ${vectorIndexName}, k=${candidateK}`);
+    console.log(`🏷️  Índice: ${vectorIndexName}`);
 
-    const pipeline = [
-      {
-        $search: {
-          index: vectorIndexName,
-          knnBeta: {
-            vector: queryEmbedding,
-            path: "embedding",
-            k: candidateK,
-          },
-        },
-      },
-    ];
-    const match = this._buildMatch(filters);
-    if (Object.keys(match).length > 0) pipeline.push({ $match: match });
-
-    pipeline.push(
-      {
-        $project: {
-          referenceId: 1,
-          referenceCollection: 1,
-          modelo: 1,
-          tipo: 1,
-          fecha: 1,
-          embedding: 1,
-        },
-      },
-      { $limit: candidateK }
-    );
-
-    let candidates = [];
-    try {
-      candidates = await this.embeddingsColl.aggregate(pipeline).toArray();
-      console.log(
-        `✅ Candidatos encontrados (via $search): ${candidates.length}`
-      );
-    } catch (err) {
-      console.warn(
-        `⚠️  $search falló (${err.message}). Aplicando fallback local.`
-      );
-      // Fallback: get documents that match filters and compute cosine locally
-      const fallbackDocs = await this.embeddingsColl.find(match).toArray();
-      console.log(
-        `📄 Fallback: ${fallbackDocs.length} documentos recuperados para similitud local.`
-      );
-      candidates = fallbackDocs;
-    }
-
-    // Si $search devolvió 0 candidatos (sin error), aplicar fallback local también
-    if (
-      (!candidates || candidates.length === 0) &&
-      (!err || typeof err === "undefined")
-    ) {
-      try {
-        const fallbackDocs = await this.embeddingsColl.find(match).toArray();
-        console.log(
-          `📄 Fallback (no candidatos): ${fallbackDocs.length} documentos recuperados para similitud local.`
-        );
-        candidates = fallbackDocs;
-      } catch (e) {
-        console.warn("⚠️ Error ejecutando fallback local:", e.message);
-      }
-    }
-
-    if (!candidates || candidates.length === 0) {
-      console.warn(`⚠️  Sin resultados para: "${query}"`);
-      return {
-        query,
-        success: true,
-        results: [],
-        timings: { embed_ms: tiempo_ms },
-      };
-    }
-
-    const scored = candidates.map((c) => {
-      let sim = 0;
-      try {
-        sim = embeddingService.cosineSimilarity(queryEmbedding, c.embedding);
-      } catch (e) {
-        sim = 0;
-      }
-      return { ...c, score: sim };
+    // Delegar a searchByEmbedding que ya tiene lógica de fallback, regeneración CLIP-text y truncamiento
+    return this.searchByEmbedding(queryEmbedding, {
+      limit,
+      vectorIndexName,
+      filters,
+      tiempo_ms,
+      originalQuery: query,
     });
-
-    scored.sort((a, b) => b.score - a.score);
-    const top = scored.slice(0, limit);
-
-    const results = [];
-    for (const c of top) {
-      const referenced = await this._resolveReference(
-        c.referenceCollection,
-        c.referenceId
-      );
-      results.push({
-        score: c.score,
-        referenceId: c.referenceId,
-        referenceCollection: c.referenceCollection,
-        modelo: c.modelo,
-        tipo: c.tipo,
-        fecha: c.fecha,
-        document: referenced,
-      });
-    }
-
-    return {
-      query,
-      success: true,
-      results,
-      timings: {
-        embed_ms: tiempo_ms,
-      },
-    };
   }
 
   // ---------- hybridSearch: same idea but with compound search ----------
@@ -316,9 +216,13 @@ class VectorSearchService {
       // coincidan con los embeddings de imagen (CLIP)
       let embObj;
       try {
-        embObj = await embeddingService.generateClipTextEmbedding(queryOrImageUrl);
+        embObj =
+          await embeddingService.generateClipTextEmbedding(queryOrImageUrl);
       } catch (e) {
-        console.warn('⚠️ No se pudo generar embedding CLIP-text, usando embedding de texto genérico:', e.message);
+        console.warn(
+          "⚠️ No se pudo generar embedding CLIP-text, usando embedding de texto genérico:",
+          e.message
+        );
         embObj = await embeddingService.generateTextEmbedding(queryOrImageUrl);
       }
       const { embedding: emb, tiempo_ms } = embObj;
@@ -523,25 +427,48 @@ class VectorSearchService {
     // `originalQuery` en options, intentar regenerar un embedding de texto
     // usando el encoder de texto de CLIP para alinear dimensiones.
     let queryEmbedding = inputEmbedding;
-    const candidateDim = (candidates[0] && candidates[0].embedding && candidates[0].embedding.length) || null;
+    const candidateDim =
+      (candidates[0] &&
+        candidates[0].embedding &&
+        candidates[0].embedding.length) ||
+      null;
 
     if (candidateDim && queryEmbedding.length !== candidateDim) {
-      console.warn(`   ⚠️ Dimensiones no coinciden (query: ${queryEmbedding.length}, candidatos: ${candidateDim})`);
+      console.warn(
+        `   ⚠️ Dimensiones no coinciden (query: ${queryEmbedding.length}, candidatos: ${candidateDim})`
+      );
       if (options && options.originalQuery) {
         try {
-          console.log('   🔁 Intentando regenerar embedding de texto con CLIP-text...');
-          const clipEmbObj = await embeddingService.generateClipTextEmbedding(options.originalQuery);
-          if (clipEmbObj && Array.isArray(clipEmbObj.embedding) && clipEmbObj.embedding.length === candidateDim) {
+          console.log(
+            "   🔁 Intentando regenerar embedding de texto con CLIP-text..."
+          );
+          const clipEmbObj = await embeddingService.generateClipTextEmbedding(
+            options.originalQuery
+          );
+          if (
+            clipEmbObj &&
+            Array.isArray(clipEmbObj.embedding) &&
+            clipEmbObj.embedding.length === candidateDim
+          ) {
             queryEmbedding = clipEmbObj.embedding;
-            console.log(`   ✅ Regenerado CLIP-text embedding (${queryEmbedding.length} dims)`);
+            console.log(
+              `   ✅ Regenerado CLIP-text embedding (${queryEmbedding.length} dims)`
+            );
           } else {
-            console.warn('   ⚠️ CLIP-text regresó embedding con dimensiones inesperadas o inválidas.');
+            console.warn(
+              "   ⚠️ CLIP-text regresó embedding con dimensiones inesperadas o inválidas."
+            );
           }
         } catch (e) {
-          console.warn('   ⚠️ No se pudo generar embedding CLIP-text en scoring:', e.message);
+          console.warn(
+            "   ⚠️ No se pudo generar embedding CLIP-text en scoring:",
+            e.message
+          );
         }
       } else {
-        console.warn('   ⚠️ No se proporcionó `originalQuery`; no es posible regenerar CLIP-text embedding.');
+        console.warn(
+          "   ⚠️ No se proporcionó `originalQuery`; no es posible regenerar CLIP-text embedding."
+        );
       }
     }
 
@@ -552,11 +479,15 @@ class VectorSearchService {
           sim = embeddingService.cosineSimilarity(queryEmbedding, c.embedding);
         } else {
           // Intentar calcular similitud truncando al menor tamaño común
-          console.log('   🔧 Dimensiones aún no coinciden: usando truncamiento para calcular similitud');
-          sim = embeddingService.cosineSimilarity(queryEmbedding, c.embedding, { allowTruncate: true });
+          console.log(
+            "   🔧 Dimensiones aún no coinciden: usando truncamiento para calcular similitud"
+          );
+          sim = embeddingService.cosineSimilarity(queryEmbedding, c.embedding, {
+            allowTruncate: true,
+          });
         }
       } catch (e) {
-        console.warn('   ⚠️ Error calculando similitud:', e.message);
+        console.warn("   ⚠️ Error calculando similitud:", e.message);
         sim = 0;
       }
       return { ...c, score: sim };
