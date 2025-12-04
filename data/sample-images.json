@@ -1,6 +1,6 @@
 [
   {
-    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/JPEG_example_flower.jpg/200px-JPEG_example_flower.jpg",
+    "url": "https://www.shutterstock.com/shutterstock/photos/111437783/display_1500/stock-photo-closeup-of-big-red-pills-111437783.jpg",
     "titulo": "Pastilla Roja",
     "descripcion": "Pastilla para la presión arterial",
     "tipo": "medicamento",
@@ -8,7 +8,7 @@
     "fecha": "2025-01-01T00:00:00.000Z"
   },
   {
-    "url": "https://imagenes.heraldo.es/files/image_990_556/uploads/imagenes/2014/01/20/_antibioticos_5e62a9b6.jpg",
+    "url": "https://img.freepik.com/fotos-premium/pastilla-blanca-redonda-cuidado-salud-tratamiento-medico-antecedentes-bue_116441-15129.jpg",
     "titulo": "Pastilla Blanca",
     "descripcion": "Antibiótico común",
     "tipo": "medicamento",
@@ -16,7 +16,7 @@
     "fecha": "2025-01-02T00:00:00.000Z"
   },
   {
-    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/JPEG_example_flower.jpg/200px-JPEG_example_flower.jpg",
+    "url": "https://static9.depositphotos.com/1026550/1138/i/950/depositphotos_11388325-stock-photo-green-pill.jpg",
     "titulo": "Cápsula Verde",
     "descripcion": "Suplemento vitamínico",
     "tipo": "suplemento",
@@ -24,7 +24,7 @@
     "fecha": "2025-01-03T00:00:00.000Z"
   },
   {
-    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Good_Food_Display_-_NCI_Visuals_Online.jpg/200px-Good_Food_Display_-_NCI_Visuals_Online.jpg",
+    "url": "https://locatelcolombia.vtexassets.com/arquivos/ids/335274-1600-1600?v=638154831195300000&width=1600&height=1600&aspect=true",
     "titulo": "Jarabe Azul",
     "descripcion": "Jarabe para la tos",
     "tipo": "medicamento",
@@ -32,11 +32,387 @@
     "fecha": "2025-01-04T00:00:00.000Z"
   },
   {
-    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/200px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg",
+    "url": "https://thumbs.dreamstime.com/z/medicamentos-recetados-para-comprimidos-o-pastillas-de-color-amarillo-159128681.jpg?ct=jpeg",
     "titulo": "Comprimido Amarillo",
     "descripcion": "Analgésico general",
     "tipo": "medicamento",
     "metadata": { "laboratorio": "Lab V" },
     "fecha": "2025-01-05T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.shutterstock.com/shutterstock/photos/2597509661/display_1500/stock-photo-red-and-white-capsule-on-isolated-white-background-single-pill-health-medication-pharmacy-and-2597509661.jpg",
+    "titulo": "Cápsula Roja y Blanca",
+    "descripcion": "Antibiótico combinado",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab A" },
+    "fecha": "2025-01-06T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.alkaseltzer-ca.com/sites/g/files/vrxlpx49071/files/2022-07/gastric-alka_0.jpg",
+    "titulo": "Tableta Oval Blanca",
+    "descripcion": "Inhibidor de ácido gástrico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab B" },
+    "fecha": "2025-01-07T00:00:00.000Z"
+  },
+  {
+    "url": " https://www.shutterstock.com/shutterstock/photos/1700091247/display_1500/stock-photo-orange-pills-spilling-out-of-an-orange-pill-bottle-1700091247.jpg",
+    "titulo": "Píldora Naranja",
+    "descripcion": "Antihistamínico para alergias",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab C" },
+    "fecha": "2025-01-08T00:00:00.000Z"
+  },
+  {
+    "url": "https://media.istockphoto.com/id/495811319/es/foto/comprimidos-de-color-rosa.jpg?s=1024x1024&w=is&k=20&c=YEdAAlFOUSvRXe_MTdhMgQBqz7iTA8QZFb5gOsLyges=",
+    "titulo": "Comprimido Rosa",
+    "descripcion": "Analgésico para migrañas",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab D" },
+    "fecha": "2025-01-09T00:00:00.000Z"
+  },
+  {
+    "url": "https://img.freepik.com/fotos-premium/capsula-hierbas-negras-suplemento-alimenticio-pildora-vitaminas-medicina-herbal-sobre-fondo-blanco_117406-3313.jpg",
+    "titulo": "Cápsula Negra",
+    "descripcion": "Suplemento de hierro",
+    "tipo": "suplemento",
+    "metadata": { "laboratorio": "Lab E" },
+    "fecha": "2025-01-10T00:00:00.000Z"
+  },
+  {
+    "url": "https://media.istockphoto.com/id/537344750/es/foto/p%C3%BArpura-p%C3%ADldora-c%C3%A1psulas-sobre-fondo-blanco.jpg?s=1024x1024&w=is&k=20&c=A52fx8Wt1mA01Xkw_txyXZYq7YcZhCTSY68OzyDIUUM=",
+    "titulo": "Píldora Púrpura",
+    "descripcion": "Antidepresivo ISRS",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab F" },
+    "fecha": "2025-01-11T00:00:00.000Z"
+  },
+  {
+    "url": "https://farmacosalud.com/wp-content/uploads/2015/02/pastillas-comprimidos-marrones-recurso-medicaci%C3%B3n-f%C3%A1rmacos-medicamentos-p%C3%ADldoras.jpg",
+    "titulo": "Comprimido Marrón",
+    "descripcion": "Suplemento de calcio",
+    "tipo": "suplemento",
+    "metadata": { "laboratorio": "Lab G" },
+    "fecha": "2025-01-12T00:00:00.000Z"
+  },
+  {
+    "url": "https://thumbs.dreamstime.com/z/p%C3%ADldoras-color-turquesa-aisladas-en-fondo-blanco-c%C3%A1psulas-coloreadas-para-virus-de-la-gripe-e-infecciones-el-concepto-medicina-y-179212225.jpg?ct=jpeg",
+    "titulo": "Cápsula Turquesa",
+    "descripcion": "Probiótico intestinal",
+    "tipo": "suplemento",
+    "metadata": { "laboratorio": "Lab H" },
+    "fecha": "2025-01-13T00:00:00.000Z"
+  },
+  {
+    "url": "https://http2.mlstatic.com/D_NQ_NP_2X_648685-MCO93544463112_102025-F.webp",
+    "titulo": "Tableta Gris",
+    "descripcion": "Anticoagulante",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab I" },
+    "fecha": "2025-01-14T00:00:00.000Z"
+  },
+  {
+    "url": "https://thumbs.dreamstime.com/z/verde-ovalado-p%C3%ADldoras-medicaci%C3%B3n-sobre-fondo-blanco-un-mont%C3%B3n-de-pastillas-gel-c%C3%A1psula-n%C3%BAmero-en-que-indican-son-ibuprofeno-210511310.jpg?ct=jpeg",
+    "titulo": "Píldora Verde Oscuro",
+    "descripcion": "Hipotensor cardíaco",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab J" },
+    "fecha": "2025-01-15T00:00:00.000Z"
+  },
+  {
+    "url": "https://media.istockphoto.com/id/185303315/es/foto/plata-paquetes-de-bl%C3%ADster-de-pastillas.jpg?s=1024x1024&w=is&k=20&c=xQsbDGlpgFvnh-R1L93uAhn8abmfDYe0Uq9MfSzMuvo=",
+    "titulo": "Comprimido Plateado",
+    "descripcion": "Antifúngico tópico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab K" },
+    "fecha": "2025-01-16T00:00:00.000Z"
+  },
+  {
+    "url": "https://farmacosalud.com/wp-content/uploads/2024/04/capsulas-rojas-pastillas-rojas-pastillas2-jpg.webp",
+    "titulo": "Cápsula Roja Oscuro",
+    "descripcion": "Suplemento de vitamina D",
+    "tipo": "suplemento",
+    "metadata": { "laboratorio": "Lab L" },
+    "fecha": "2025-01-17T00:00:00.000Z"
+  },
+  {
+    "url": "https://naturasol.com.co/wp-content/uploads/2025/09/comprar-viagra-generico-online-en-espana.jpg",
+    "titulo": "Píldora Azul Claro",
+    "descripcion": "Disfunción eréctil",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab M" },
+    "fecha": "2025-01-18T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.novasalud.cl/media/catalog/product/cache/1a10d735dfa619d2686c17030920c9f1/4/0/4002116_2.jpg",
+    "titulo": "Tableta Blanca Rectangular",
+    "descripcion": "Antiinflamatorio AINE",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab N" },
+    "fecha": "2025-01-19T00:00:00.000Z"
+  },
+  {
+    "url": "https://content.nationalgeographic.com.es/medio/2023/03/16/benzodiacepina_00000000_230316170346_960x640.jpg",
+    "titulo": "Comprimido Beige",
+    "descripcion": "Ansiolítico benzodiacepina",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab O" },
+    "fecha": "2025-01-20T00:00:00.000Z"
+  },
+  {
+    "url": "https://co.virbac.com/files/live/sites/virbac-co/files/predefined-files/packshots/600x600/dalipen-large.jpg",
+    "titulo": "Cápsula Naranja Oscuro",
+    "descripcion": "Antibiótico de amplio espectro",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab P" },
+    "fecha": "2025-01-21T00:00:00.000Z"
+  },
+  {
+    "url": "https://cdn.batitienda.com/baticloud/images/product_picture_9d0b7b5f86864467acc1dd076af69f41_638452570710289147_0_m.webp",
+    "titulo": "Píldora Roja Brillante",
+    "descripcion": "Antifebril paracetamol",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab Q" },
+    "fecha": "2025-01-22T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.bago.com.bo/wp-content/uploads/2021/10/Plenacor-D.png",
+    "titulo": "Tableta Azul Marino",
+    "descripcion": "Diurético para hipertensión",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab R" },
+    "fecha": "2025-01-23T00:00:00.000Z"
+  },
+  {
+    "url": "https://exitocol.vtexassets.com/arquivos/ids/26959595/Suplemento-Mineral-De-Zinc-HEALTHY-AMERICA-881-3012541_a.jpg?v=638767315526000000",
+    "titulo": "Comprimido Oro",
+    "descripcion": "Suplemento de zinc",
+    "tipo": "suplemento",
+    "metadata": { "laboratorio": "Lab S" },
+    "fecha": "2025-01-24T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.megalabschile.cl/test2/wp-content/uploads/2018/08/Ceumid.png",
+    "titulo": "Cápsula Blanca y Negra",
+    "descripcion": "Anticonvulsionante",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab T" },
+    "fecha": "2025-01-25T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.farma-vazquez.com/76386-thickbox_default/dulcolaxo-bisacodilo-5-mg-30-comprimidos-gastrorresistentes.jpg",
+    "titulo": "Píldora Verde Claro",
+    "descripcion": "Laxante osmótico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab U" },
+    "fecha": "2025-01-26T00:00:00.000Z"
+  },
+  {
+    "url": "https://cdnx.jumpseller.com/distribuciones-elite/image/52386693/resize/1040/1040?1725039843",
+    "titulo": "Tableta Crema",
+    "descripcion": "Protector gástrico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab V" },
+    "fecha": "2025-01-27T00:00:00.000Z"
+  },
+  {
+    "url": "https://lh3.googleusercontent.com/H2cj-qILWbCZr9vpWNwfJtiAmWExgWn2ffEtSq9B7-M_t0LaVgHYdf1Qb0NsZX10P4gxuq2T5ihoKNgXbO_0AzHoTan9kPueP7R2YENQCLuu85dT=s360",
+    "titulo": "Comprimido Salmón",
+    "descripcion": "Antitusígeno expectorante",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab W" },
+    "fecha": "2025-01-28T00:00:00.000Z"
+  },
+  {
+    "url": "https://medicamentosmk.com/static/images/acetaminofen-forte-mk.webp",
+    "titulo": "Cápsula Blanca y Roja",
+    "descripcion": "Analgésico con cafeína",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab X" },
+    "fecha": "2025-01-29T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.farmayala.com/wp-content/uploads/2024/01/1A_4d877ccfd5dd14f9126b0d6f573d91b5.jpg",
+    "titulo": "Píldora Amarilla Oscuro",
+    "descripcion": "Antidiabético oral",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab Y" },
+    "fecha": "2025-01-30T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.buscapina.com.co/dam/jcr:77d2c182-b23e-4084-87c2-bccfd81ed5bd/buscapina_compositum_nf.webp",
+    "titulo": "Tableta Menta",
+    "descripcion": "Antiespasmódico digestivo",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab Z" },
+    "fecha": "2025-01-31T00:00:00.000Z"
+  },
+  {
+    "url": "https://copservir.vtexassets.com/arquivos/ids/1782305-1200-auto?v=638999087827370000&width=1200&height=auto&aspect=true",
+    "titulo": "Comprimido Coral",
+    "descripcion": "Broncodilatador inhalado",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AA" },
+    "fecha": "2025-02-01T00:00:00.000Z"
+  },
+  {
+    "url": "https://eticos.com.py/wp-content/uploads/2023/02/Cognil-10-Metilfenidato-10-mg-30-Comp-A-768x768.jpg",
+    "titulo": "Cápsula Verde y Blanca",
+    "descripcion": "Estimulante del sistema nervioso",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AB" },
+    "fecha": "2025-02-02T00:00:00.000Z"
+  },
+  {
+    "url": "https://lainco.com/wp-content/themes/lainco/assets/img/products/pharma/121.jpg",
+    "titulo": "Píldora Carbón",
+    "descripcion": "Adsorbente para intoxicaciones",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AC" },
+    "fecha": "2025-02-03T00:00:00.000Z"
+  },
+  {
+    "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJIMtqt24T_p1zdEvoAA6W7W15kNq6cH8jTQ&s",
+    "titulo": "Tableta Blanca Redonda",
+    "descripcion": "Antácido de rápida acción",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AD" },
+    "fecha": "2025-02-04T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.vetcross.com/wp-content/uploads/2022/08/Mockup_Frasco_DraminH1-vetcross.png",
+    "titulo": "Comprimido Frambuesa",
+    "descripcion": "Antihistamínico H1",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AE" },
+    "fecha": "2025-02-05T00:00:00.000Z"
+  },
+  {
+    "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTmfO3fB4aBnszwjU9TcCV6PAyFurcY0H1JWw&s",
+    "titulo": "Cápsula Amarilla y Blanca",
+    "descripcion": "Antitiroideo",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AF" },
+    "fecha": "2025-02-06T00:00:00.000Z"
+  },
+  {
+    "url": "https://nutrafitcolombia.com/wp-content/uploads/2024/07/magnesium-oxide-400-mg-100-cap.webp",
+    "titulo": "Píldora Tiza",
+    "descripcion": "Suplemento de magnesio",
+    "tipo": "suplemento",
+    "metadata": { "laboratorio": "Lab AG" },
+    "fecha": "2025-02-07T00:00:00.000Z"
+  },
+  {
+    "url": "https://lh3.googleusercontent.com/dkGSWi4S6zaHv3uPnViK_DcUQquu2BiA8e0W_Alwj6_Xoomtln-C0Bsxv9bdo0Q_0icB7LGRUNliKAVhrPSumHLb-sVXjEWEaDTUalAHMu3zSyQ=s360",
+    "titulo": "Tableta Lavanda",
+    "descripcion": "Relajante muscular",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AH" },
+    "fecha": "2025-02-08T00:00:00.000Z"
+  },
+  {
+    "url": "https://hvdes.com/wp-content/uploads/2025/06/LEVOTIROXINA-0.3-MG.jpeg",
+    "titulo": "Comprimido Melocotón",
+    "descripcion": "Hormona tiroidea sintética",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AI" },
+    "fecha": "2025-02-09T00:00:00.000Z"
+  },
+  {
+    "url": "https://medisol.com.ar/wp-content/uploads/2022/12/medisol-aerovent-aerosol-120-dosis-768x768.jpg",
+    "titulo": "Cápsula Roja y Negra",
+    "descripcion": "Antiasmático preventivo",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AJ" },
+    "fecha": "2025-02-10T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.saval.cl/fv/imagen.php?r=66ab41a05554c012b777595493944bc0cfe71167",
+    "titulo": "Píldora Marfil",
+    "descripcion": "Anticoagulante directo",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AK" },
+    "fecha": "2025-02-11T00:00:00.000Z"
+  },
+  {
+    "url": "https://i.mkt.lu/cont/304407/280/240/medicabc.jpg",
+    "titulo": "Tableta Verde Menta",
+    "descripcion": "Antineoplásico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AL" },
+    "fecha": "2025-02-12T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.ifarma.com.mx/wp-content/uploads/7502227876367.jpg",
+    "titulo": "Comprimido Níquel",
+    "descripcion": "Inmunosupresor",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AM" },
+    "fecha": "2025-02-13T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.mascotecno.com.co/web/image/product.product/21218/image_1024/%5B7-0104-0098%5D%20ADRENALINA%20VET%20INY%20X%2020%20ML%20%7BM%7D?unique=37b6ec7",
+    "titulo": "Cápsula Blanca y Azul",
+    "descripcion": "Estimulante adrenérgico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AN" },
+    "fecha": "2025-02-14T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.lasanteca.com/userfiles/2018/12/RANITIDINA-300-MG-CAJA-X-100-FRONTAL.png",
+    "titulo": "Píldora Nácar",
+    "descripcion": "Antihistamínico H2",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AO" },
+    "fecha": "2025-02-15T00:00:00.000Z"
+  },
+  {
+    "url": "https://laboratoriocofasa.com/wp-content/uploads/2021/09/BROMEXINA-JARABE-1000x1000-1-1000x1000.jpg",
+    "titulo": "Tableta Miel",
+    "descripcion": "Expectorante mucolítico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AP" },
+    "fecha": "2025-02-16T00:00:00.000Z"
+  },
+  {
+    "url": "https://medicamentosmk.com/static/images/memantina-mk.webp",
+    "titulo": "Comprimido Bronce",
+    "descripcion": "Neuroprotector",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AQ" },
+    "fecha": "2025-02-17T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.gramonbago.com.uy/imgnoticias/202405/W800_H450/1848.png",
+    "titulo": "Cápsula Púrpura y Blanca",
+    "descripcion": "Antipsicótico atípico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AR" },
+    "fecha": "2025-02-18T00:00:00.000Z"
+  },
+  {
+    "url": "https://www.drogueriascafam.com.co/54739-large_default/comprar-en-cafam-smecta-antidiarreico-caja-con-10-sobres-precio.jpg",
+    "titulo": "Píldora Ópalo",
+    "descripcion": "Antidiarreico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AS" },
+    "fecha": "2025-02-19T00:00:00.000Z"
+  },
+  {
+    "url": "https://laboratoriounimedical.com/wp-content/uploads/2023/11/PIMOVET-5.jpg",
+    "titulo": "Tableta Café",
+    "descripcion": "Vasodilatador periférico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AT" },
+    "fecha": "2025-02-20T00:00:00.000Z"
+  },
+  {
+    "url": "https://eticos.com.py/wp-content/uploads/2023/03/Notrom-Clopidogrel-75-mg-30-Comp-A-768x768.jpg",
+    "titulo": "Comprimido Cobre",
+    "descripcion": "Antitrombótico",
+    "tipo": "medicamento",
+    "metadata": { "laboratorio": "Lab AU" },
+    "fecha": "2025-02-21T00:00:00.000Z"
   }
 ]
